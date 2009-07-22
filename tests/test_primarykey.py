@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 #
-# A new Python file
+# Lazyboy: PrimaryKey unit tests
 #
-# © 2009 Buster Marx, Inc All rights reserved.
-# Author: Ian Eure <ian.eure@gmail.com>
+# © 2009 Digg, Inc. All rights reserved.
+# Author: Ian Eure <ian@digg.com>
 #
 
 import unittest
-from digg.storage.object import PrimaryKey, IncompleteKeyException
+from lazyboy.primarykey import PrimaryKey
+from lazyboy.exceptions import ErrorIncompleteKey
 
 class PrimaryKeyTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
@@ -28,7 +29,7 @@ class PrimaryKeyTest(unittest.TestCase):
                                  (args[k], k, getattr(pk, k)))
 
         for args in self.denied:
-            self.assertRaises(IncompleteKeyException, PrimaryKey, **args)
+            self.assertRaises(ErrorIncompleteKey, PrimaryKey, **args)
 
     def test_super(self):
         self.assert_(not PrimaryKey(table='eggs', key='sausage').is_super())

@@ -1,22 +1,19 @@
-import digg.storage.cassandra as cassandra
-import digg.config as config
-import py, time
+from lazyboy.connection import *
+import unittest
+import time
 
-class TestCassandra(object):
-    def __init__(self):
-        self.config = config.factory("cassandra")
-    
-    def testClient(self):
-        client = cassandra.getClient("votes")
-        assert type(client) is cassandra.Client
+class TestClient(unittest.TestCase):
+    def test_client(self):
+        client = cassandra.get_pool("votes")
+        self.assert_(type(client) is cassandra.Client)
         
         try:
             client = cassandra.Client()
         except Exception, e:
             py.test.raises(TypeError, e)
         
-    def testInvalidGetSliceNoTable(self):
-        client = cassandra.getClient("votes")
+    def test_InvalidGetSliceNoTable(self):
+        client = cassandra.get_pool("votes")
         key = "1"
         table = "users"
         column = "test"
@@ -24,17 +21,17 @@ class TestCassandra(object):
         end = -1
         try:
             client.get_slice(table, key, column, start, end)
-        except cassandra.InvalidRequestException, e:
-            assert True == True
+        except cassandra.ErrorInvalidRequest, e:
+            self.assert_(True == True)
                 
-    def testInvalidClient(self):
+    def test_InvalidClient(self):
         try:
-            client = cassandra.getClient("votegfdgdfgdfgdfgs")
+            client = cassandra.get_pool("votegfdgdfgdfgdfgs")
         except cassandra.ErrorCassandraClientNotFound, e:
-            assert True == True
+            self.assert_(True == True)
             
-    def testInsertBatchSuperColumnFamily(self):
-        client = cassandra.getClient("votes")
+    def test_InsertBatchSuperColumnFamily(self):
+        client = cassandra.get_pool("votes")
         timestamp = time.time()
         vote_id = "12345"
         url = "http://google.com/"
@@ -45,10 +42,10 @@ class TestCassandra(object):
 
         row = cassandra.batch_mutation_super_t(table = "URI", key = vote_id, cfmap = cfmap)
         
-        assert client.batch_insert_superColumn(row, 0) == None
+        self.assert_(client.batch_insert_superColumn(row, 0) == None)
             
-    def testGetSliceSuperColumn(self):
-        client = cassandra.getClient("votes")
+    def test_GetSliceSuperColumn(self):
+        client = cassandra.get_pool("votes")
         key = "12345"
         table = "URI"
         column = "votes"
@@ -56,4 +53,8 @@ class TestCassandra(object):
         end = -1
         results = client.get_slice_super(table, key, column, start, end)
 
-        assert results[0].name == "12345"
+        self.assert_(results[0].name == "12345")
+
+
+if __name__ == '__main__':
+    unittest.main()
