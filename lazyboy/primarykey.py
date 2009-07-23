@@ -20,13 +20,6 @@ class PrimaryKey(object):
         return (self.supercol or self.superkey) and \
             (self.supercol and self.superkey)
 
-    def colspec(self):
-        """Return the column specification needed by Cassandra."""
-        out = "%s:" % (self.family,)
-        if self.supercol and self.superkey:
-            out += "%s:%s" % (self.supercol, self.superkey)
-        return out
-
     def __str__(self):
         """Return the string representation of this PK"""
         keys = ('table', 'family', 'key', 'supercol', 'superkey')

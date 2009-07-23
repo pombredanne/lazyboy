@@ -36,15 +36,6 @@ class PrimaryKeyTest(unittest.TestCase):
         self.assert_(PrimaryKey(table='eggs', key='sausage', supercol='bacon',
                                 superkey='spam').is_super())
 
-    def test_colspec(self):
-        spec = PrimaryKey(table='eggs', key='spam', family='bacon').colspec()
-        self.assert_(spec == 'bacon:')
-        spec = PrimaryKey(table='eggs', key='spam', family='bacon',
-                          supercol='sausage', superkey='tomato').colspec()
-        # FIXME not sure if this is right, it may need a trailing :
-        self.assert_(spec == 'bacon:sausage:tomato')
-
-
     def test_str(self):
         x = PrimaryKey(table='eggs', key='spam', family='bacon').__str__()
         self.assert_(type(x) is str)
