@@ -8,6 +8,8 @@
 
 import time
 
+from cassandra.ttypes import SuperColumnPath
+
 from lazyboy.columnfamily import *
 from lazyboy.base import CassandraBase
 
@@ -36,13 +38,12 @@ class SuperColumn(CassandraBase, dict):
     def _load_one(self, superkey):
         """Load and return an instance of the SCF with key superkey."""
         client = self._get_cas()
-        if not (self.pk.colspec() + ':' + superkey) in self.__class__.__cache:
-            scol = client.get_superColumn(
-                self.pk.table, self.pk.key,
-                self.name + ':' + superkey)
-            self.__class__.__cache[self.pk.colspec() + ':' + superkey] = scol
+        if not (str(self.pk)) in self.__class__.__cache:
+            scol = client.get_super_column(
+                self.pk.table, self.pk.key, SuperColumnPath(superkey, self.name))
+            self.__class__.__cache[str(self.pk)] = scol
         else:
-            scol = self.__class__.__cache[self.pk.colspec() + ':' + superkey]
+            scol = self.__class__.__cache[str(self.pk)]
 
         return self._instantiate(superkey, scol.columns)
 
