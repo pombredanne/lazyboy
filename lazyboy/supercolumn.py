@@ -63,7 +63,7 @@ class SuperColumn(CassandraBase, dict):
     def __len_db__(self):
         """Return the number of SuperColumnFamilies in Cassandra for this SC."""
         return self._get_cas().get_column_count(
-            self.pk.table, self.pk.key, cassandra.ColumnParent(self.name))
+            self.pk.table, self.pk.key, ColumnParent(self.name))
 
     def __len_loaded__(self):
         """Return the number of items in this instance.

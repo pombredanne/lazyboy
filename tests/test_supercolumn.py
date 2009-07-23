@@ -6,6 +6,17 @@
 # Author: Ian Eure <ian@digg.com>
 #
 
+import unittest
+import random
+import uuid
+
+from test_base import CassandraBaseTest
+from test_supercolumnfamily import SuperColumnFamilyTest
+
+import cassandra.ttypes as castypes
+from lazyboy.primarykey import *
+from lazyboy.supercolumn import *
+
 class SuperColumnTest(CassandraBaseTest):
     class SuperColumn(SuperColumn):
         _key = {'table': 'eggs', 'key': 'bacon'}
@@ -30,7 +41,7 @@ class SuperColumnTest(CassandraBaseTest):
     def test_load_all(self):
         scols = []
         for name in (map(lambda i: 'spam' + str(i), range(6))):
-            scols.append(cassandra.SuperColumn(name=name, columns=[]))
+            scols.append(castypes.SuperColumn(name=name, columns=[]))
         self.object._iter_columns = lambda key, chunk_size: scols
         self.object.load_all()
 
@@ -45,7 +56,7 @@ class SuperColumnTest(CassandraBaseTest):
 
     def test_load_one(self):
         mock = MockClient()
-        scol = cassandra.SuperColumn(name='spam', columns=[])
+        scol = castypes.SuperColumn(name='spam', columns=[])
         mock.get_superColumn = lambda table, key, keyspec: scol
         self.object._get_cas = lambda: mock
         scf = self.object._load_one(scol.name)
@@ -54,7 +65,7 @@ class SuperColumnTest(CassandraBaseTest):
         self.assert_(scf.__class__ == self.object.family)
 
     def test_instantiate(self):
-        cols = [cassandra.Column(
+        cols = [Column(
                 name='eggs', value='bacon', timestamp='1234')]
         scf = self.object._instantiate('spamspamspam', cols)
         self.assert_(scf.pk.superkey == 'spamspamspam',
@@ -102,7 +113,7 @@ class SuperColumnTest(CassandraBaseTest):
         scols = []
         scmap = {}
         for key in map(lambda i: 'spam' + str(i), range(5)):
-            sc = cassandra.SuperColumn(name=key, columns=[])
+            sc = castypes.SuperColumn(name=key, columns=[])
             scols.append(sc)
             scmap[key] = sc
 
@@ -161,3 +172,7 @@ class SuperColumnTest(CassandraBaseTest):
 
     def test_save(self):
         pass
+
+
+if __name__ == '__main__':
+    unittest.main()
