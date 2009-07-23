@@ -97,7 +97,7 @@ class Client(object):
             if self._connect(client):
                 try:
                     return getattr(client, attr).__call__(*args, **kwargs)
-                except Thrift.ErrorT, tx:
+                except Thrift.TException, tx:
                     if tx.message:
                         message = tx.message
                     else:
