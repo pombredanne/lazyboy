@@ -145,7 +145,7 @@ class ColumnFamilyTest(CassandraBaseTest):
     def get_mock_cassandra(self):
         """Return a mock cassandra instance"""
         mock = None
-        if not mock: mock = MockClient()
+        if not mock: mock = MockClient(['localhost:1234'])
         return mock
 
     def test_load(self):

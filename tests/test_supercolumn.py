@@ -56,7 +56,7 @@ class SuperColumnTest(CassandraBaseTest):
                           'foo', {})
 
     def test_load_one(self):
-        mock = MockClient()
+        mock = MockClient(['localhost:1234'])
         scol = castypes.SuperColumn(name='spam', columns=[])
         mock.get_superColumn = lambda table, key, keyspec: scol
         self.object._get_cas = lambda: mock
@@ -104,7 +104,7 @@ class SuperColumnTest(CassandraBaseTest):
             self.assert_(self.object.__len_loaded__() == i)
 
     def test_iter_columns(self):
-        mock = MockClient()
+        mock = MockClient(['localhost:1234'])
         mock.get_slice_super = lambda table, key, colspec, sort, size: False
         self.object._get_cas = lambda: mock
 
