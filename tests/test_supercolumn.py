@@ -11,6 +11,7 @@ import random
 import uuid
 
 from test_base import CassandraBaseTest
+from test_columnfamily import MockClient, _last_cols, _mutations
 from test_supercolumnfamily import SuperColumnFamilyTest
 
 import cassandra.ttypes as castypes
