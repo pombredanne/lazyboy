@@ -160,7 +160,7 @@ class ColumnFamilyTest(CassandraBaseTest):
 
     def test_save(self):
         self.assertRaises(ErrorMissingField, self.object.save)
-        data = {'eggs': 1, 'bacon': 2, 'sausage': 3}
+        data = {'eggs': "1", 'bacon': "2", 'sausage': "3"}
         self.object.update(data)
         self.object._get_cas = self.get_mock_cassandra
         del self.object['bacon']
