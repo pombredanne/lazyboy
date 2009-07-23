@@ -116,8 +116,8 @@ class ColumnFamily(CassandraBase, dict):
         if changed:
             client.batch_insert(
                 self.pk.table,
-                BatchMutation(
-                    self.pk.key, {self.pk.family: changed}), 0)
+                BatchMutation(self.pk.key, {self.pk.family: changed}), 0)
+
         return self
 
     def revert(self):
