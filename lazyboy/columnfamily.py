@@ -118,6 +118,8 @@ class ColumnFamily(CassandraBase, dict):
                 self.pk.table,
                 BatchMutation(self.pk.key, {self.pk.family: changed}), 0)
 
+        # FIXME this is ugly
+        self.load(self.pk.key)
         return self
 
     def revert(self):
