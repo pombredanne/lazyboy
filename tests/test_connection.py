@@ -1,14 +1,26 @@
+# -*- coding: utf-8 -*-
+#
+# Connection unit tests
+#
+# © 2009 Digg, Inc. All rights reserved.
+# Author: Ian Eure <ian@digg.com>
+# Author: Chris Goffinet <goffinet@digg.com>
+#
+
 import unittest
 import time
 
+from cassandra import Cassandra
 from cassandra.ttypes import *
+from thrift import Thrift
+from thrift.transport import TSocket
 
 import lazyboy.connection as conn
-from lazyboy.exceptions import ErrorCassandraClientNotFound
+from lazyboy.exceptions import *
 from test_columnfamily import MockClient
 
 
-class TestClient(unittest.TestCase):
+class ConnectionTest(unittest.TestCase):
     def setUp(self):
         self.pool = 'testing'
         self.__client = conn.Client
@@ -19,6 +31,8 @@ class TestClient(unittest.TestCase):
     def tearDown(self):
         conn.Client = self.__client
 
+
+class TestPools(ConnectionTest):
     def test_add_pool(self):
         servers = ['localhost:1234', 'localhost:5678']
         conn.add_pool(__name__, servers)
@@ -30,46 +44,97 @@ class TestClient(unittest.TestCase):
 
         self.assertRaises(TypeError, conn.Client)
 
-    def test_InvalidGetSliceNoTable(self):
-        return # ErrorInvalidRequest doesn't seem to exist
-        client = conn.get_pool(self.pool)
-        key = "1"
-        table = "users"
-        column = "test"
-        start = -1
-        end = -1
-        self.assertRaises(ErrorInvalidRequest, client.get_slice,
-                          (table, key, column, start, end))
+        self.assertRaises(ErrorCassandraClientNotFound,
+                          conn.get_pool, (__name__))
 
-    def test_InvalidClient(self):
-        self.assertRaises(ErrorCassandraClientNotFound, conn.get_pool,
-                          ("votegfdgdfgdfgdfgs"))
 
-    def test_InsertBatchSuperColumnFamily(self):
-        client = conn.get_pool(self.pool)
-        timestamp = time.time()
-        vote_id = "12345"
-        url = "http://google.com/"
-        votes = []
-        columns = [SuperColumn(vote_id, [Column(name = "456", value = "fake values", timestamp = timestamp)])]
-        
-        cfmap = {"votes": columns}
+class TestClient(ConnectionTest):
+    def setUp(self):
+        super(TestClient, self).setUp()
+        self.client = MockClient(['localhost:1234', 'localhost:5678'])
 
-        row = BatchMutationSuper(key = vote_id, cfmap = cfmap)
-        
-        self.assert_(client.batch_insert_super_column("URI", row, 0) == None)
-            
-    def test_GetSliceSuperColumn(self):
-        return
-        client = conn.get_pool(self.pool)
-        key = "12345"
-        table = "URI"
-        column = "votes"
-        start = -1
-        end = -1
-        results = client.get_slice_super(table, key, column, start, end)
+    def test_init(self):
+        pass
 
-        self.assert_(results[0].name == "12345")
+    def test_build_server(self):
+        class ErrorFailedBuild(Exception):
+            pass
+
+        def raise_():
+            raise ErrorFailedBuild()
+
+
+        srv = self.client._build_server('localhost', 1234)
+        self.assert_(srv.__class__ is Cassandra.Client)
+
+        # FIXME - test exception handling
+
+    def test_get_server(self):
+        # Zero clients
+        real = self.client._clients
+        bad = (None, [])
+        for clts in bad:
+            self.client._clients = bad
+            self.assert_(ErrorCassandraNoServersConfigured,
+                         self.client._get_server)
+
+        # Round-robin
+        fake = ['eggs', 'bacon', 'spam']
+        self.client._clients = fake
+        self.client._current_server = 0
+        for exp in fake * 2:
+            srv = self.client._get_server()
+            self.assert_(srv == exp)
+
+    def test_list_servers(self):
+        servers = self.client.list_servers()
+        self.assert_(servers.__class__ == list)
+        self.assert_(self.client._clients == servers)
+
+    def test_connect(self):
+        def raise_(except_):
+            def __r():
+                raise except_
+            return __r
+
+        class _MockTransport(object):
+            def __init__(self, *args, **kwargs):
+                self.calls = {'open': 0, 'close': 0}
+
+            def open(self):
+                self.calls['open'] +=1
+
+            def close(self):
+                self.calls['close'] += 1
+
+
+
+        # Already connected
+        client = self.client._clients[0]
+        client.transport = _MockTransport()
+        client.transport.isOpen = lambda: True
+        self.assert_(self.client._connect(client))
+
+        # Not connected, no error
+        client.transport.isOpen = lambda: False
+        nopens = client.transport.calls['open']
+        self.assert_(self.client._connect(client))
+        self.assert_(client.transport.calls['open'] == nopens + 1)
+
+        # Thrift Exception on connect
+        client.transport.open = raise_(Thrift.TException)
+        self.assertRaises(ErrorThriftMessage,
+                          self.client._connect, client,)
+
+        # Other exception on connect
+        client.transport.open = raise_(Exception)
+        ncloses = client.transport.calls['close']
+        self.assert_(self.client._connect(client) == False)
+        self.assert_(client.transport.calls['close'] == ncloses + 1)
+
+
+    def test_getattr(self):
+        pass
 
 
 if __name__ == '__main__':

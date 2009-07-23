@@ -32,3 +32,7 @@ class ErrorCassandraClientNotFound(Exception):
 
 class ErrorThriftMessage(Exception):
     pass
+
+
+class ErrorCassandraNoServersConfigured(Exception):
+    pass

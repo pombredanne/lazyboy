@@ -17,8 +17,7 @@ from thrift.transport import TTransport
 from thrift.transport import TSocket
 from thrift.protocol import TBinaryProtocol
 
-from lazyboy.exceptions import ErrorCassandraClientNotFound, ErrorThriftMessage
-
+from lazyboy.exceptions import *
 
 _SERVERS = {}
 _CLIENTS = {}
@@ -44,11 +43,11 @@ def get_pool(name):
 class Client(object):
     def __init__(self, servers):
         self._servers = servers
-        self._clients = [s for s in [self._buildServer(*server.split(":")) \
+        self._clients = [s for s in [self._build_server(*server.split(":")) \
                                          for server in servers] if s]
         self._current_server = random.randint(0, len(self._clients))
 
-    def _buildServer(self, host, port):
+    def _build_server(self, host, port):
         try:
             socket = TSocket.TSocket(host, int(port))
             # socket.setTimeout(200)
@@ -60,16 +59,15 @@ class Client(object):
         except:
             return None
 
-    def _getServer(self):
+    def _get_server(self):
         if self._clients is None or len(self._clients) == 0:
             raise ErrorCassandraNoServersConfigured
 
         next_server = self._current_server % len(self._clients)
         self._current_server += 1
-        print self._servers[next_server]
         return self._clients[next_server]
 
-    def listServers(self):
+    def list_servers(self):
         return self._clients
 
     def _connect(self, client):
@@ -95,7 +93,7 @@ class Client(object):
     def __getattr__(self, attr):
         """Wrap every __func__ call to Cassandra client and connect()"""
         def func(*args, **kwargs):
-            client = self._getServer()
+            client = self._get_server()
             if self._connect(client):
                 try:
                     return getattr(client, attr).__call__(*args, **kwargs)
