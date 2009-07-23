@@ -10,6 +10,7 @@ import time
 import uuid
 
 from lazyboy.base import CassandraBase
+from lazyboy.primarykey import *
 from lazyboy.columnfamily import *
 
 class SuperColumnFamily(ColumnFamily):

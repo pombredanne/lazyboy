@@ -8,9 +8,10 @@
 
 import unittest
 
-import test_columnfamily
-
 from cassandra import *
+
+from lazyboy.supercolumnfamily import *
+from test_columnfamily import ColumnFamilyTest
 
 class SuperColumnFamilyTest(ColumnFamilyTest):
     class SuperColumnFamily(SuperColumnFamily):
