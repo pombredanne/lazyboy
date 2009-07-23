@@ -6,6 +6,6 @@
 # Author: Ian Eure <ian@digg.com>
 #
 
-__all__ = ['primarykey', 'columnfamily', 'supercolumnfamily', 'supercolumn',
-           'view']
+__all__ = ['connection', 'primarykey', 'columnfamily', 'supercolumnfamily',
+           'supercolumn', 'view']
 
