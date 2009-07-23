@@ -24,8 +24,8 @@ _last_cols = []
 _mutations = []
 class MockClient(Client):
     """A mock Cassandra client which returns canned responses"""
-    def __init__(self):
-        pass
+    def _buildServer(self, host, port):
+        return "test"
 
     def get_slice(self, *args, **kwargs):
         [_last_cols.pop() for i in range(len(_last_cols))]

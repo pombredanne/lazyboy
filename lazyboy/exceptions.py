@@ -25,5 +25,10 @@ class ErrorIncompleteKey(Exception):
 class ErrorUnknownTable(Exception):
     pass
 
+
 class ErrorCassandraClientNotFound(Exception):
+    pass
+
+
+class ErrorThriftMessage(Exception):
     pass

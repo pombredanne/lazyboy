@@ -17,7 +17,7 @@ from thrift.transport import TTransport
 from thrift.transport import TSocket
 from thrift.protocol import TBinaryProtocol
 
-from lazyboy.exceptions import ErrorCassandraClientNotFound
+from lazyboy.exceptions import ErrorCassandraClientNotFound, ErrorThriftMessage
 
 
 _SERVERS = {}
@@ -43,14 +43,12 @@ def get_pool(name):
 
 class Client(object):
     def __init__(self, servers):
-        self._clients = []
-        for server in servers:
-            host, port = server.split(":")
-            self._addServer(host,port)
+        self._servers = servers
+        self._clients = [s for s in [self._buildServer(*server.split(":")) \
+                                         for server in servers] if s]
+        self._current_server = random.randint(0, len(self._clients))
 
-        self._current_server = 0
-
-    def _addServer(self, host, port):
+    def _buildServer(self, host, port):
         try:
             socket = TSocket.TSocket(host, int(port))
             # socket.setTimeout(200)
@@ -58,19 +56,17 @@ class Client(object):
             protocol = TBinaryProtocol.TBinaryProtocolAccelerated(transport)
             client = Cassandra.Client(protocol)
             client.transport = transport
-            self._clients.append(client)
-        finally:
-            return True
-
-        return False
+            return client
+        except:
+            return None
 
     def _getServer(self):
-        if self._clients is None:
+        if self._clients is None or len(self._clients) == 0:
             raise ErrorCassandraNoServersConfigured
 
         next_server = self._current_server % len(self._clients)
         self._current_server += 1
-
+        print self._servers[next_server]
         return self._clients[next_server]
 
     def listServers(self):
@@ -84,7 +80,7 @@ class Client(object):
         try:
             client.transport.open()
             return True
-        except Thrift.ErrorT, tx:
+        except Thrift.TException, tx:
             if tx.message:
                 message = tx.message
             else:
