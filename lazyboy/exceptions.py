@@ -6,33 +6,37 @@
 # Author: Ian Eure <ian@digg.com>
 #
 
-class ErrorNotSupported(Exception):
+class LazyboyException(Exception):
     pass
 
 
-class ErrorMissingField(Exception):
+class ErrorNotSupported(LazyboyException):
     pass
 
 
-class ErrorInvalidField(Exception):
+class ErrorMissingField(LazyboyException):
     pass
 
 
-class ErrorIncompleteKey(Exception):
+class ErrorInvalidField(LazyboyException):
     pass
 
 
-class ErrorUnknownTable(Exception):
+class ErrorIncompleteKey(LazyboyException):
     pass
 
 
-class ErrorCassandraClientNotFound(Exception):
+class ErrorUnknownTable(LazyboyException):
     pass
 
 
-class ErrorThriftMessage(Exception):
+class ErrorCassandraClientNotFound(LazyboyException):
     pass
 
 
-class ErrorCassandraNoServersConfigured(Exception):
+class ErrorThriftMessage(LazyboyException):
+    pass
+
+
+class ErrorCassandraNoServersConfigured(LazyboyException):
     pass
