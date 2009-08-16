@@ -94,7 +94,8 @@ class ColumnFamily(CassandraBase, dict):
         self._original = [ ]
         for cors in self._get_cas().get_slice(
             self.pk.table, self.pk.key, ColumnParent(self.pk.family),
-	    SlicePredicate(("uid",)), ConsistencyLevel.ONE):
+	    SlicePredicate(slice_range = SliceRange(start = " ", finish = "~")), 
+	    ConsistencyLevel.ONE):
 	    self._original.append(cors.column)
 
         self.revert()
