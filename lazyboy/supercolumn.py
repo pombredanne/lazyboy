@@ -8,7 +8,7 @@
 
 import time
 
-from cassandra.ttypes import SuperColumnPath
+from cassandra.ttypes import BatchMutationSuper, ColumnPath, ColumnParent, ConsistencyLevel, SlicePredicate, SliceRange
 
 from lazyboy.columnfamily import *
 from lazyboy.base import CassandraBase
@@ -29,7 +29,7 @@ class SuperColumn(CassandraBase, dict):
         """Load all SuperColumnFamilies in this SuperColumn"""
         for scol in self._iter_columns('', chunk_size=2**30):
             super(SuperColumn, self).__setitem__(
-                scol.name, self._instantiate(scol.name, scol.columns))
+                scol.super_column.name, self._instantiate(scol.super_column.name, scol.super_column.columns))
         return self
 
     def __setitem__(self, item, value):
@@ -39,8 +39,7 @@ class SuperColumn(CassandraBase, dict):
         """Load and return an instance of the SCF with key superkey."""
         client = self._get_cas()
         if not (str(self.pk)) in self.__class__.__cache:
-            scol = client.get_super_column(
-                self.pk.table, self.pk.key, SuperColumnPath(superkey, self.name))
+            scol = client.get(self.pk.table, self.pk.key, ColumnPath(superkey, self.name), ConsistencyLevel.ONE)
             self.__class__.__cache[str(self.pk)] = scol
         else:
             scol = self.__class__.__cache[str(self.pk)]
@@ -78,14 +77,15 @@ class SuperColumn(CassandraBase, dict):
         returned = 0
         while True:
             fudge = int(bool(start))
-            scols = client.get_slice_super(self.pk.table, self.pk.key,
-                                           self.name, start, '',
-                                           True, 0, chunk_size + fudge)
+            scols = client.get_slice(self.pk.table, self.pk.key,
+                                           ColumnParent(self.name),
+                                           SlicePredicate(slice_range = SliceRange(start = " ", finish = "~")),
+					   ConsistencyLevel.ONE)
             if not scols: raise StopIteration()
 
             for scol in scols[fudge:]:
                 returned += 1
-                self.__class__.__cache[self.pk.colspec() + ':' + scol.name] = scol
+                self.__class__.__cache[self.pk.key + ':' + scol.super_column.name] = scol
                 yield scol
                 if returned >= limit:
                    raise StopIteration()
@@ -136,7 +136,7 @@ class SuperColumn(CassandraBase, dict):
 
     def save(self):
         client = self._get_cas()
-        mutation = cassandra.BatchMutationSuper(
+        mutation = BatchMutationSuper(
             self.pk.key, dict(((k.pk.supercol, [])) for k in self.values()))
 
         for col in self.values():
@@ -153,5 +153,5 @@ class SuperColumn(CassandraBase, dict):
                             time.time(), 0) for c in changes['deleted']]
 
         if mutation.cfmap:
-            client.batch_insert_super_Column(self.pk.table, mutation, 0)
+            client.batch_insert_super_column(self.pk.table, mutation, ConsistencyLevel.ZERO)
         return self

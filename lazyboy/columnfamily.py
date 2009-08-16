@@ -8,7 +8,7 @@
 
 import time
 
-from cassandra.ttypes import Column, ColumnParent, BatchMutation
+from cassandra.ttypes import Column, ColumnParent, BatchMutation, SlicePredicate, ConsistencyLevel
 
 from lazyboy.base import CassandraBase
 from lazyboy.exceptions import *
@@ -91,9 +91,12 @@ class ColumnFamily(CassandraBase, dict):
         self._clean()
         self.pk = self._gen_pk(key)
 
-        self._original = self._get_cas().get_slice(
+        self._original = [ ]
+        for cors in self._get_cas().get_slice(
             self.pk.table, self.pk.key, ColumnParent(self.pk.family),
-            '', '', True, 100)
+	    SlicePredicate(("uid",)), ConsistencyLevel.ONE):
+	    self._original.append(cors.column)
+
         self.revert()
         return self
 

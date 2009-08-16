@@ -52,7 +52,7 @@ class SuperColumnFamily(ColumnFamily):
         # Update items
         if changes['changed'].columns:
             scol = changes['changed']
-            client.batch_insert_superColumn(
+            client.batch_insert_super_column(
                 self.pk.table,
                 cassandra.ttypes.BatchMutationSuper(
                     self.pk.key, {self.pk.supercol: [scol]}), 0)
