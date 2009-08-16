@@ -29,7 +29,7 @@ class SuperColumn(CassandraBase, dict):
         """Load all SuperColumnFamilies in this SuperColumn"""
         for scol in self._iter_columns('', chunk_size=2**30):
             super(SuperColumn, self).__setitem__(
-                scol.super_column.name, self._instantiate(scol.super_column.name, scol.super_column.columns))
+                scol.name, self._instantiate(scol.name, scol.columns))
         return self
 
     def __setitem__(self, item, value):
@@ -62,8 +62,8 @@ class SuperColumn(CassandraBase, dict):
 
     def __len_db__(self):
         """Return the number of SuperColumnFamilies in Cassandra for this SC."""
-        return self._get_cas().get_column_count(
-            self.pk.table, self.pk.key, ColumnParent(self.name))
+        return self._get_cas().get_count(
+            self.pk.table, self.pk.key, ColumnParent(self.name), ConsistencyLevel.ONE)
 
     def __len_loaded__(self):
         """Return the number of items in this instance.
@@ -79,17 +79,17 @@ class SuperColumn(CassandraBase, dict):
             fudge = int(bool(start))
             scols = client.get_slice(self.pk.table, self.pk.key,
                                            ColumnParent(self.name),
-                                           SlicePredicate(slice_range = SliceRange(start = " ", finish = "~")),
+                                           SlicePredicate(slice_range = SliceRange(start = start, finish = "~")),
 					   ConsistencyLevel.ONE)
             if not scols: raise StopIteration()
 
             for scol in scols[fudge:]:
                 returned += 1
                 self.__class__.__cache[self.pk.key + ':' + scol.super_column.name] = scol
-                yield scol
-                if returned >= limit:
+                yield scol.super_column
+                if limit != None and returned >= limit:
                    raise StopIteration()
-            start = scol.name
+            start = scol.super_column.name
 
             if len(scols) < chunk_size: raise StopIteration()
 

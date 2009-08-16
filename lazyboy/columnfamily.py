@@ -8,7 +8,7 @@
 
 import time
 
-from cassandra.ttypes import Column, ColumnParent, BatchMutation, SlicePredicate, ConsistencyLevel
+from cassandra.ttypes import Column, ColumnParent, BatchMutation, SlicePredicate, SliceRange, ConsistencyLevel
 
 from lazyboy.base import CassandraBase
 from lazyboy.exceptions import *
