@@ -8,7 +8,7 @@
 
 import time
 import datetime
-from md5 import md5
+import hashlib
 
 from lazyboy.columnfamily import *
 
@@ -84,7 +84,7 @@ class View(CassandraBase):
     def append(self, column):
         ts = time.time()
         # This is a workaround, since we can't use `:' in column names yet.
-        colname = md5(column.pk.key).hexdigest() + '.' + str(ts)
+        colname = hashlib.md5(column.pk.key).hexdigest() + '.' + str(ts)
         path = cassandra.ColumnPath(self.pk.family, None, colname)
         self._get_cas().insert(self.pk.table, self.current_key(),
                                path, column.pk.key, ts, 0)
