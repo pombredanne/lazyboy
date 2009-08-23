@@ -8,6 +8,7 @@
 
 import time
 
+import cassandra
 from cassandra.ttypes import BatchMutationSuper, ColumnPath, ColumnParent, ConsistencyLevel, SlicePredicate, SliceRange
 
 from lazyboy.columnfamily import *
@@ -39,10 +40,12 @@ class SuperColumn(CassandraBase, dict):
         """Load and return an instance of the SCF with key superkey."""
         client = self._get_cas()
         if not (str(self.pk)) in self.__class__.__cache:
-            scol = client.get(self.pk.table, self.pk.key, ColumnPath(superkey, self.name), ConsistencyLevel.ONE)
-            self.__class__.__cache[str(self.pk)] = scol
+            slice = client.get_slice(self.pk.table, self.pk.key, ColumnPath(self.name, superkey), SlicePredicate(slice_range=SliceRange(start="", finish="~")), ConsistencyLevel.ONE)
+	    columns = [col.column for col in slice]
+	    scol = cassandra.ttypes.SuperColumn(superkey, columns)
+	    self.__class__.__cache[self.pk.key + ":" + superkey] = scol
         else:
-            scol = self.__class__.__cache[str(self.pk)]
+	    scol = self.__class__.__cache[self.pk.key + ":" + superkey]
 
         return self._instantiate(superkey, scol.columns)
 
@@ -85,7 +88,7 @@ class SuperColumn(CassandraBase, dict):
 
             for scol in scols[fudge:]:
                 returned += 1
-                self.__class__.__cache[self.pk.key + ':' + scol.super_column.name] = scol
+                self.__class__.__cache[self.pk.key + ':' + scol.super_column.name] = scol.super_column
                 yield scol.super_column
                 if limit != None and returned >= limit:
                    raise StopIteration()
@@ -147,8 +150,8 @@ class SuperColumn(CassandraBase, dict):
 
                 if changes['deleted']:
                     [client.remove(
-                            col.pk.table, col.pk.key,
-                            cassandra.ColumnPathOrParent(col.pk.family, self.name,
+                            col.pk.table, self.pk.key,
+                            ColumnPath(self.pk.family, col.pk.superkey,
                                                          c.name),
                             time.time(), 0) for c in changes['deleted']]
 

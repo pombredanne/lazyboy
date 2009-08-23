@@ -82,8 +82,8 @@ class ColumnFamily(CassandraBase, dict):
 
     def __delitem__(self, item):
         super(ColumnFamily, self).__delitem__(item)
+        self._deleted[self._columns[item]] = True
         del self._columns[item]
-        self._deleted[item] = True
         if item in self._modified: del self._modified[item]
 
     def load(self, key):

@@ -36,7 +36,7 @@ class SuperColumnFamily(ColumnFamily):
         changed = [self._columns[k] for k in self._modified.keys() \
                        if self._columns.has_key(k) \
                    and self._columns[k].value != None]
-        return {'deleted': [self._columns[k] for k in self._deleted.keys()],
+        return {'deleted': self._deleted.keys(),
                 'changed': cassandra.ttypes.SuperColumn(self.pk.superkey,
                                                    changed)}
 
