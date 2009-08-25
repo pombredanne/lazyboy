@@ -8,7 +8,8 @@
 
 import time
 
-from cassandra.ttypes import Column, ColumnParent, BatchMutation, SlicePredicate, SliceRange, ConsistencyLevel
+from cassandra.ttypes import Column, ColumnParent, BatchMutation, \
+    SlicePredicate, SliceRange, ConsistencyLevel
 
 from lazyboy.base import CassandraBase
 from lazyboy.exceptions import *
@@ -91,12 +92,11 @@ class ColumnFamily(CassandraBase, dict):
         self._clean()
         self.pk = self._gen_pk(key)
 
-        self._original = [ ]
-        for cors in self._get_cas().get_slice(
+        _slice = self._get_cas().get_slice(
             self.pk.table, self.pk.key, ColumnParent(self.pk.family),
-	    SlicePredicate(slice_range = SliceRange(start = " ", finish = "~")), 
-	    ConsistencyLevel.ONE):
-	    self._original.append(cors.column)
+            SlicePredicate(slice_range=SliceRange(start="", finish="")),
+            ConsistencyLevel.ONE)
+        self._original = [obj.column for obj in _slice]
 
         self.revert()
         return self
@@ -110,13 +110,14 @@ class ColumnFamily(CassandraBase, dict):
         # Delete items
         deleted = self._deleted.keys()
         [client.remove(self.pk.table, self.pk.key,
-                       ColumnPathOrParent(self.pk.family, None, dlt),
-                       time.time(), 0) \
+                       ColumnPath(self.pk.family, None, dlt),
+                       time.time(), ConsistencyLevel.ONE) \
              for dlt in deleted if dlt in self._original]
 
         # Update items
         changed = [self._columns[k] for k in self._modified.keys() \
-                       if self._columns.has_key(k) and self._columns[k].value != None]
+                       if self._columns.has_key(k)
+                   and self._columns[k].value != None]
         if changed:
             client.batch_insert(
                 self.pk.table,

@@ -8,8 +8,8 @@
 
 import time
 
-import cassandra
-from cassandra.ttypes import BatchMutationSuper, ColumnPath, ColumnParent, ConsistencyLevel, SlicePredicate, SliceRange
+from cassandra.ttypes import ColumnPath, BatchMutationSuper
+import cassandra.ttypes.SuperColumn as SupCol
 
 from lazyboy.columnfamily import *
 from lazyboy.base import CassandraBase
@@ -40,12 +40,15 @@ class SuperColumn(CassandraBase, dict):
         """Load and return an instance of the SCF with key superkey."""
         client = self._get_cas()
         if not (str(self.pk)) in self.__class__.__cache:
-            slice = client.get_slice(self.pk.table, self.pk.key, ColumnPath(self.name, superkey), SlicePredicate(slice_range=SliceRange(start="", finish="~")), ConsistencyLevel.ONE)
-	    columns = [col.column for col in slice]
-	    scol = cassandra.ttypes.SuperColumn(superkey, columns)
-	    self.__class__.__cache[self.pk.key + ":" + superkey] = scol
+            slice = client.get_slice(
+                self.pk.table, self.pk.key, ColumnPath(self.name, superkey),
+                SlicePredicate(slice_range=SliceRange(start="", finish="~")),
+                ConsistencyLevel.ONE)
+            columns = [col.column for col in slice]
+            scol = SupCol(superkey, columns)
+            self.__class__.__cache[self.pk.key + ":" + superkey] = scol
         else:
-	    scol = self.__class__.__cache[self.pk.key + ":" + superkey]
+            scol = self.__class__.__cache[self.pk.key + ":" + superkey]
 
         return self._instantiate(superkey, scol.columns)
 
@@ -66,7 +69,8 @@ class SuperColumn(CassandraBase, dict):
     def __len_db__(self):
         """Return the number of SuperColumnFamilies in Cassandra for this SC."""
         return self._get_cas().get_count(
-            self.pk.table, self.pk.key, ColumnParent(self.name), ConsistencyLevel.ONE)
+            self.pk.table, self.pk.key, ColumnParent(self.name),
+            ConsistencyLevel.ONE)
 
     def __len_loaded__(self):
         """Return the number of items in this instance.
@@ -80,10 +84,10 @@ class SuperColumn(CassandraBase, dict):
         returned = 0
         while True:
             fudge = int(bool(start))
-            scols = client.get_slice(self.pk.table, self.pk.key,
-                                           ColumnParent(self.name),
-                                           SlicePredicate(slice_range = SliceRange(start = start, finish = "~")),
-					   ConsistencyLevel.ONE)
+            scols = client.get_slice(
+                self.pk.table, self.pk.key, ColumnParent(self.name),
+                SlicePredicate(slice_range=SliceRange(start=start, finish="~")),
+                ConsistencyLevel.ONE)
             if not scols: raise StopIteration()
 
             for scol in scols[fudge:]:
@@ -156,5 +160,6 @@ class SuperColumn(CassandraBase, dict):
                             time.time(), 0) for c in changes['deleted']]
 
         if mutation.cfmap:
-            client.batch_insert_super_column(self.pk.table, mutation, ConsistencyLevel.ZERO)
+            client.batch_insert_super_column(self.pk.table, mutation,
+                                             ConsistencyLevel.ZERO)
         return self

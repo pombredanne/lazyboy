@@ -7,8 +7,8 @@
 #
 
 import time
-import uuid
-import cassandra
+
+from cassandra.ttypes import SuperColumn, BatchMutationSuper
 
 from lazyboy.base import CassandraBase
 from lazyboy.primarykey import *
@@ -37,8 +37,7 @@ class SuperColumnFamily(ColumnFamily):
                        if self._columns.has_key(k) \
                    and self._columns[k].value != None]
         return {'deleted': self._deleted.keys(),
-                'changed': cassandra.ttypes.SuperColumn(self.pk.superkey,
-                                                   changed)}
+                'changed': SuperColumn(self.pk.superkey, changed)}
 
     def save(self):
         client = self._get_cas()
@@ -46,14 +45,14 @@ class SuperColumnFamily(ColumnFamily):
 
         # Delete items
         [client.remove(self.pk.table, self.pk.key,
-                       cassandra.ttypes.ColumnPathOrParent(self.pk.family, None, c.name),
-                       time.time(), 0) for c in changes['deleted']]
+                       ColumnPath(self.pk.family, None, c.name),
+                       time.time(), ConsistencyLevel.ONE)
+         for c in changes['deleted']]
 
         # Update items
         if changes['changed'].columns:
             scol = changes['changed']
             client.batch_insert_super_column(
                 self.pk.table,
-                cassandra.ttypes.BatchMutationSuper(
-                    self.pk.key, {self.pk.supercol: [scol]}), 0)
+                BatchMutationSuper(self.pk.key, {self.pk.supercol: [scol]}), 0)
         return self
