@@ -58,8 +58,10 @@ class SuperColumnTest(CassandraBaseTest):
     def test_load_one(self):
         mock = MockClient(['localhost:1234'])
         scol = castypes.SuperColumn(name='spam', columns=[])
+        mock.get_slice = lambda keyspace, key, column_parent, predicate, consistency_level: [ColumnOrSuperColumn(col) for col in scol.columns]
         mock.get_super_column = lambda table, key, keyspec: scol
         self.object._get_cas = lambda: mock
+
         scf = self.object._load_one(scol.name)
         self.assert_(scf.pk.superkey == scol.name)
         self.assert_(scf._original == scol.columns)
@@ -91,7 +93,7 @@ class SuperColumnTest(CassandraBaseTest):
     def test_len_db(self):
         rand_len = random.randint(0, 1000)
         class Fake(object):
-            def get_column_count(*args, **kwargs):
+            def get_count(*args, **kwargs):
                 return rand_len
 
         self.object._get_cas = lambda: Fake()

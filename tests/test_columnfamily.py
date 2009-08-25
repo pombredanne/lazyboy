@@ -11,7 +11,8 @@ import uuid
 import random
 import unittest
 
-from cassandra.ttypes import Column, ColumnParent, BatchMutation
+from cassandra.ttypes import Column, ColumnOrSuperColumn, ColumnParent, \
+    BatchMutation
 
 from lazyboy.connection import Client
 from lazyboy.columnfamily import ColumnFamily
@@ -28,9 +29,10 @@ class MockClient(Client):
         [_last_cols.pop() for i in range(len(_last_cols))]
         cols = []
         for i in range(random.randrange(1, 15)):
-            cols.append(Column(name=uuid.uuid4(),
-                               value=uuid.uuid4(),
-                               timestamp=time.time()))
+            cols.append(ColumnOrSuperColumn(
+                    column=Column(name=uuid.uuid4().hex,
+                                  value=uuid.uuid4().hex,
+                                  timestamp=time.time())))
         _last_cols.extend(cols)
         return cols
 
@@ -132,7 +134,7 @@ class ColumnFamilyTest(CassandraBaseTest):
                          "Key not in modified list")
             del self.object[k]
             self.assert_(k not in self.object, "Key was not deleted.")
-            self.assert_(k in self.object._deleted,
+            self.assert_(k in [col.name for col in self.object._deleted],
                          "Key was not marked as deleted.")
             self.assert_(k not in self.object._modified,
                          "Deleted key in modified list")
@@ -149,9 +151,10 @@ class ColumnFamilyTest(CassandraBaseTest):
         self.object._get_cas = self.get_mock_cassandra
         self.object.load('eggs')
         self.assert_(self.object.pk.key == 'eggs')
-        self.assert_(self.object._original == _last_cols)
+        cols = [obj.column for obj in _last_cols]
+        self.assert_(self.object._original == cols)
 
-        for col in _last_cols:
+        for col in cols:
             self.assert_(self.object[col.name] == col.value)
             self.assert_(self.object._columns[col.name] == col)
 
@@ -166,20 +169,23 @@ class ColumnFamilyTest(CassandraBaseTest):
         # which makes the test fail, due to incorrect arity in the
         # arguments to the lambda.
         MockClient.remove = lambda self: self.fail("Nothing should get removed.")
+        self.object.load = lambda self: None
 
         res = self.object.save()
-        self.assert_(res == self.object, "Self not returned from ColumnFamily.save")
+        print self.object
+        self.assert_(res == self.object,
+                     "Self not returned from ColumnFamily.save")
         mutation = _mutations[len(_mutations) - 1]
-        self.assert_(mutation.__class__ == BatchMutation,
-                     "Mutation class is %s, not BatchMutation." % \
-                         (mutation.__class__,))
+        self.assert_(isinstance(mutation, BatchMutation),
+                     "Mutation class is %s, not BatchMutation." %
+                     (mutation.__class__,))
 
         self.assert_(mutation.key == self.object.pk.key,
                      "Mutation key is %s, not PK key %s." \
                          % (mutation.key, self.object.pk.key))
         self.assert_(self.object.pk.family in mutation.cfmap,
-                     "PK family %s not in mutation cfmap" % \
-                         (self.object.pk.family,))
+                     "PK family %s not in mutation cfmap" %
+                     (self.object.pk.family,))
 
         for col in mutation.cfmap[self.object.pk.family]:
             self.assert_(col.__class__ == Column,

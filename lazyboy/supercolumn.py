@@ -8,8 +8,8 @@
 
 import time
 
-from cassandra.ttypes import ColumnPath, BatchMutationSuper
-import cassandra.ttypes.SuperColumn as SupCol
+from cassandra.ttypes import ColumnPath, BatchMutationSuper, \
+    SuperColumn as SupCol
 
 from lazyboy.columnfamily import *
 from lazyboy.base import CassandraBase
