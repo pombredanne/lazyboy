@@ -22,7 +22,15 @@ class ErrorInvalidField(LazyboyException):
     pass
 
 
+class ErrorMissingKey(LazyboyException):
+    pass
+
+
 class ErrorIncompleteKey(LazyboyException):
+    pass
+
+
+class ErrorNoSuchRecord(LazyboyException):
     pass
 
 

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 #
-# ColumnFamily unit tests
-#
 # © 2009 Digg, Inc. All rights reserved.
 # Author: Ian Eure <ian@digg.com>
 #
+"""Record unit tests."""
 
 import time
+import math
 import uuid
 import random
 import unittest
@@ -15,8 +15,9 @@ from cassandra.ttypes import Column, ColumnOrSuperColumn, ColumnParent, \
     BatchMutation
 
 from lazyboy.connection import Client
-from lazyboy.columnfamily import ColumnFamily
-from lazyboy.exceptions import ErrorMissingField
+from lazyboy.key import Key
+from lazyboy.record import Record
+from lazyboy.exceptions import ErrorMissingField, ErrorMissingKey
 
 from test_base import CassandraBaseTest
 
@@ -41,15 +42,15 @@ class MockClient(Client):
         return True
 
 
-class ColumnFamilyTest(CassandraBaseTest):
-    class ColumnFamily(ColumnFamily):
+class RecordTest(CassandraBaseTest):
+    class Record(Record):
         _key = {'table': 'eggs',
                 'family': 'bacon'}
         _required = ('eggs',)
 
     def __init__(self, *args, **kwargs):
-        super(ColumnFamilyTest, self).__init__(*args, **kwargs)
-        self.class_ = self.ColumnFamily
+        super(RecordTest, self).__init__(*args, **kwargs)
+        self.class_ = self.Record
 
 
     def test_init(self):
@@ -100,16 +101,16 @@ class ColumnFamilyTest(CassandraBaseTest):
         for k in data:
             self.object[k] = data[k]
             self.assert_(self.object[k] == data[k],
-                         "Data not set in ColumnFamily")
+                         "Data not set in Record")
             self.assert_(k in self.object._columns,
-                         "Data not set in ColumnFamily.columns")
+                         "Data not set in Record.columns")
             self.assert_(self.object._columns[k].__class__ is Column,
-                         "ColumnFamily._columns[%s] is %s, not Column" % \
+                         "Record._columns[%s] is %s, not Column" % \
                              (type(self.object._columns[k]), k))
             self.assert_(self.object._columns[k].value == data[k],
                          "Value mismatch in Column, got `%s', expected `%s'" \
                              % (self.object._columns[k].value, data[k]))
-            now = time.time()
+            now = self.object.timestamp()
             self.assert_(self.object._columns[k].timestamp <= now,
                          "Expected timestamp <= %s, got %s" \
                              % (now, self.object._columns[k].timestamp))
@@ -118,30 +119,26 @@ class ColumnFamilyTest(CassandraBaseTest):
                          "Key was marked as deleted.")
             self.assert_(k in self.object._modified, "Key not in modified list")
 
-        self.object._original = self.object._columns.values()
-        col = self.object._original[0]
-        self.object[col.name] = col.value
-
     def test_delitem(self):
         data = {'id': 'eggs', 'title': 'bacon'}
         for k in data:
             self.object[k] = data[k]
             self.assert_(self.object[k] == data[k],
-                         "Data not set in ColumnFamily")
+                         "Data not set in Record")
             self.assert_(k not in self.object._deleted,
                          "Key was marked as deleted.")
             self.assert_(k in self.object._modified,
                          "Key not in modified list")
             del self.object[k]
             self.assert_(k not in self.object, "Key was not deleted.")
-            self.assert_(k in [col.name for col in self.object._deleted],
+            self.assert_(k in self.object._deleted,
                          "Key was not marked as deleted.")
             self.assert_(k not in self.object._modified,
                          "Deleted key in modified list")
             self.assert_(k not in self.object._columns,
                          "Column was not deleted.")
 
-    def get_mock_cassandra(self):
+    def get_mock_cassandra(self, keyspace=None):
         """Return a mock cassandra instance"""
         mock = None
         if not mock: mock = MockClient(['localhost:1234'])
@@ -149,12 +146,13 @@ class ColumnFamilyTest(CassandraBaseTest):
 
     def test_load(self):
         self.object._get_cas = self.get_mock_cassandra
-        self.object.load('eggs')
-        self.assert_(self.object.pk.key == 'eggs')
-        cols = [obj.column for obj in _last_cols]
+        key = Key(keyspace='eggs', column_family='bacon', key='tomato')
+        self.object.load(key)
+        self.assert_(self.object.key is key)
+        cols = dict([[obj.column.name, obj.column] for obj in _last_cols])
         self.assert_(self.object._original == cols)
 
-        for col in cols:
+        for col in cols.values():
             self.assert_(self.object[col.name] == col.value)
             self.assert_(self.object._columns[col.name] == col)
 
@@ -162,34 +160,40 @@ class ColumnFamilyTest(CassandraBaseTest):
         self.assertRaises(ErrorMissingField, self.object.save)
         data = {'eggs': "1", 'bacon': "2", 'sausage': "3"}
         self.object.update(data)
+
+        self.assertRaises(ErrorMissingKey, self.object.save)
+
+        key = Key(keyspace='eggs', column_family='bacon', key='tomato')
+        self.object.key = key
         self.object._get_cas = self.get_mock_cassandra
         del self.object['bacon']
         # FIXME – This doesn't really work, in the sense that
         # self.fail() is never called, but it still triggers an error
         # which makes the test fail, due to incorrect arity in the
         # arguments to the lambda.
-        MockClient.remove = lambda self: self.fail("Nothing should get removed.")
+        MockClient.remove = lambda self, a, b, c, d, e: None
         self.object.load = lambda self: None
 
         res = self.object.save()
-        print self.object
         self.assert_(res == self.object,
-                     "Self not returned from ColumnFamily.save")
+                     "Self not returned from Record.save")
         mutation = _mutations[len(_mutations) - 1]
         self.assert_(isinstance(mutation, BatchMutation),
                      "Mutation class is %s, not BatchMutation." %
                      (mutation.__class__,))
 
-        self.assert_(mutation.key == self.object.pk.key,
+        self.assert_(mutation.key == self.object.key.key,
                      "Mutation key is %s, not PK key %s." \
-                         % (mutation.key, self.object.pk.key))
-        self.assert_(self.object.pk.family in mutation.cfmap,
+                         % (mutation.key, self.object.key.key))
+        self.assert_(self.object.key.column_family in mutation.cfmap,
                      "PK family %s not in mutation cfmap" %
-                     (self.object.pk.family,))
+                     (self.object.key.column_family,))
 
-        for col in mutation.cfmap[self.object.pk.family]:
-            self.assert_(col.__class__ == Column,
-                         "Column class isn't Column")
+        for corsc in mutation.cfmap[self.object.key.column_family]:
+            self.assert_(corsc.__class__ == ColumnOrSuperColumn)
+            self.assert_(corsc.column and not corsc.super_column)
+            col = corsc.column
+
             self.assert_(col.name in data,
                          "Column %s wasn't set from update()" % \
                              (col.name))
@@ -202,8 +206,7 @@ class ColumnFamilyTest(CassandraBaseTest):
     def test_revert(self):
         data = {'id': 'eggs', 'title': 'bacon'}
         for k in data:
-            self.object._original.append(Column(name=k,
-                                                value=data[k]))
+            self.object._original[k] = Column(name=k, value=data[k])
 
         self.object.revert()
 
@@ -221,13 +224,13 @@ class ColumnFamilyTest(CassandraBaseTest):
                      "Altered instance is not modified.")
 
 
-# class ImmutableColumnFamilyTest(ColumnFamilyTest):
-#     class ImmutableColumnFamily(ImmutableColumnFamily, ColumnFamilyTest.class_):
+# class ImmutableRecordTest(RecordTest):
+#     class ImmutableRecord(ImmutableRecord, RecordTest.class_):
 #         _immutable = {'foo': 'xyz'}
 
 #     def __init__(self, *args, **kwargs):
-#         self.class_ = self.ImmutableColumnFamily
-#         super(ColumnFamilyTest, self).__init__(*args, **kwargs)
+#         self.class_ = self.ImmutableRecord
+#         super(RecordTest, self).__init__(*args, **kwargs)
 
 #     def test_immutability(self):
 #         try:

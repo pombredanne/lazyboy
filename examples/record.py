@@ -7,11 +7,11 @@
 #
 # This example assumes the following schema:
 #
-# <Tables>
-#     <Table Name="UserData">
-#         <ColumnFamily ColumnSort="Name" Name="Users"/>
-#     </Table>
-# </Tables>
+# <Keyspaces>
+#     <Keyspace Name="UserData">
+#         <ColumnFamily CompareWith="BytesType" Name="Users"/>
+#     </Keyspace>
+# </Keyspaces>
 #
 
 
@@ -21,29 +21,40 @@ from lazyboy import *
 # Define your cluster(s)
 connection.add_pool('UserData', ['localhost:9160'])
 
+# This can be used for convenience, rather than repeating the Keyspace
+# and CF.
+class UserKey(Key):
+    """This is a key class which defaults to storage in the Users CF
+    in the UserData Keyspace."""
+    def __init__(self, key=None):
+        Key.__init__(self, "UserData", "Users", key)
 
-# Subclass ColumnFamily to create an object of the correct type.
-class User(columnfamily.ColumnFamily):
+
+
+xo# Subclass Record to create an object of the correct type.
+class User(record.Record):
     """A class representing a user in Cassandra."""
-
-    # _key is the key template. It's values are given to
-    # PrimaryKey.__init__ as keyword arguments any time a PK is
-    # instantiated for this object.
-    _key = {'table': 'UserData',        # The table to store in
-            'family': 'Users'}          # The ColumnFamily name to store on
 
     # Anything in here _must_ be set before the object is saved
     _required = ('username',)
+
+    def __init__(self, *args, **kwargs):
+        """Initialize the record, along with a new key."""
+        record.Record.__init__(self, *args, **kwargs)
+        self.key = UserKey()
 
 
 # Create an empty object
 u = User()
 
-# A PrimaryKey is generated for you:
-print u.pk
-# -> {'table': 'UserData', 'superkey': None,
+# Set the key. A UUID will be generated for you
+print u.key
+# -> {'keyspace': 'UserData', 'column_family': 'Users',
 #     'key': 'da6c8e19174f40cfa6d0b65a08eef62f',
-#     'family': 'Users', 'supercol': None}
+#      'super_column': None}
+
+# If you want to store records in a SuperColumn, set key.super_column:
+superkey = u.key.clone(super_column="scol_a")
 
 data = {'username': 'ieure', 'email': 'ian@digg.com'}
 
@@ -55,8 +66,8 @@ for k in data:
     u[k] = data[k]
 
 # Arguments to __init__ are passed to update()
-u = User(data)
-print u            # -> {'username': 'ieure', 'email': 'ian@digg.com'}
+u_ = User(data)
+print u_           # -> {'username': 'ieure', 'email': 'ian@digg.com'}
 
 # You can see if it's been modified.
 print u.is_modified()           # -> True
@@ -67,7 +78,7 @@ u.save()           # -> {'username': 'ieure', 'email': 'ian@digg.com'}
 print u.is_modified()           # -> False
 
 # Load it in a new instance.
-u_ = User().load(u.pk.key)
+u_ = User().load(key)
 print u_           # -> {'username': 'ieure', 'email': 'ian@digg.com'}
 
 print u.is_modified()           # -> False
@@ -83,4 +94,3 @@ except Exception, e:
 u.revert()
 print u.is_modified()           # -> False
 print u.valid()                 # -> True
-
