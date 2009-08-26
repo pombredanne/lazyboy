@@ -9,8 +9,8 @@
 import unittest
 from lazyboy.base import CassandraBase
 import lazyboy.connection
-from lazyboy.primarykey import *
-from lazyboy.exceptions import ErrorUnknownTable
+from lazyboy.key import Key
+from lazyboy.exceptions import ErrorUnknownKeyspace, ErrorIncompleteKey
 
 class CassandraBaseTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
@@ -22,7 +22,7 @@ class CassandraBaseTest(unittest.TestCase):
 
     def setUp(self):
         self.__get_pool = lazyboy.connection.get_pool
-        lazyboy.connection.get_pool = lambda table: "Test"
+        lazyboy.connection.get_pool = lambda keyspace: "Test"
         self.object = self._get_object()
 
     def tearDown(self):
@@ -33,37 +33,15 @@ class CassandraBaseTest(unittest.TestCase):
         self.assert_(self.object._clients == {})
 
     def test_get_cas(self):
-        _pk = None
-        if hasattr(self.object, 'pk'):
-            _pk = self.object.pk
-            del self.object.pk
-        self.assertRaises(ErrorUnknownTable, self.object._get_cas)
-        if _pk:
-            self.object.pk = _pk
+        self.assertRaises(ErrorIncompleteKey, self.object._get_cas)
 
         # Get with explicit tale
         self.assert_(self.object._get_cas('foo') == "Test")
 
         # Implicit based on pk
-        self.object.pk = PrimaryKey(table='eggs', key='sausage')
+        self.object.pk = Key(keyspace='eggs', column_family="bacon",
+                             key='sausage')
         self.assert_(self.object._get_cas('foo') == "Test")
-
-    def test_gen_pk(self):
-        key = {'table': 'eggs', 'family': 'bacon'}
-        self.object._key = key
-        pk = self.object._gen_pk()
-        for k in key:
-            self.assert_(hasattr(pk, k))
-            self.assert_(getattr(pk, k) == key[k])
-
-        pk = self.object._gen_pk('test123')
-        self.assert_(pk.key == 'test123')
-        for k in key:
-            self.assert_(hasattr(pk, k))
-            self.assert_(getattr(pk, k) == key[k])
-
-        self.object._key = {}
-
 
     def test_gen_uuid(self):
         self.assert_(type(self.object._gen_uuid()) == str)

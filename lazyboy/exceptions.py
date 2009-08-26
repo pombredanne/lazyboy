@@ -26,7 +26,7 @@ class ErrorIncompleteKey(LazyboyException):
     pass
 
 
-class ErrorUnknownTable(LazyboyException):
+class ErrorUnknownKeyspace(LazyboyException):
     pass
 
 

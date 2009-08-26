@@ -8,9 +8,8 @@
 
 import uuid
 
-from lazyboy.exceptions import ErrorUnknownTable
+from lazyboy.exceptions import ErrorUnknownKeyspace, ErrorIncompleteKey
 import lazyboy.connection as connection
-from lazyboy.primarykey import PrimaryKey
 
 class CassandraBase(object):
     """The base class for all Cassandra-accessing objects."""
@@ -18,22 +17,16 @@ class CassandraBase(object):
     def __init__(self):
         self._clients = {}
 
-    def _get_cas(self, table=None):
+    def _get_cas(self, keyspace=None):
         """Return the cassandra client."""
-        if not table and (not hasattr(self, 'pk') or \
-                              not hasattr(self.pk, 'table')):
-            raise ErrorUnknownTable()
+        if not keyspace and (not hasattr(self, 'key') or not self.key):
+            raise ErrorIncompleteKey("Instance has no key.")
 
-        table = table or self.pk.table
-        if table not in self._clients:
-            self._clients[table] = connection.get_pool(table)
+        keyspace = keyspace or self.key.keyspace
+        if keyspace not in self._clients:
+            self._clients[keyspace] = connection.get_pool(keyspace)
 
-        return self._clients[table]
-
-    def _gen_pk(self, key=None):
-        """Generate and return a PrimaryKey with a new UUID."""
-        key = key or self._gen_uuid()
-        return PrimaryKey(**dict(self._key.items() + [['key', key]]))
+        return self._clients[keyspace]
 
     def _gen_uuid(self):
         """Generate a UUID for this object"""
