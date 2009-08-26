@@ -43,10 +43,6 @@ class CassandraBaseTest(unittest.TestCase):
                              key='sausage')
         self.assert_(self.object._get_cas('foo') == "Test")
 
-    def test_gen_uuid(self):
-        self.assert_(type(self.object._gen_uuid()) == str)
-        self.assert_(self.object._gen_uuid() != self.object._gen_uuid(),
-                     "Unique IDs aren't very unique.")
 
 if __name__ == '__main__':
     unittest.main()

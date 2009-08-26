@@ -6,8 +6,6 @@
 # Author: Ian Eure <ian@digg.com>
 #
 
-import uuid
-
 from lazyboy.exceptions import ErrorUnknownKeyspace, ErrorIncompleteKey
 import lazyboy.connection as connection
 
@@ -28,6 +26,3 @@ class CassandraBase(object):
 
         return self._clients[keyspace]
 
-    def _gen_uuid(self):
-        """Generate a UUID for this object"""
-        return uuid.uuid4().hex
