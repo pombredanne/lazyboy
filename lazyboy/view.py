@@ -1,90 +1,126 @@
 # -*- coding: utf-8 -*-
 #
-# A new Python file
-#
 # © 2009 Digg, Inc. All rights reserved.
 # Author: Ian Eure <ian@digg.com>
 #
+"""Lazyboy: Views."""
 
 import time
 import datetime
 import hashlib
 
-from lazyboy.columnfamily import *
+from cassandra.ttypes import ColumnPath, ColumnParent, \
+    SlicePredicate, SliceRange, ConsistencyLevel
+
+from lazyboy.key import Key
+from lazyboy.base import CassandraBase
+from lazyboy.record import Record
+from lazyboy.connection import Client
+
+def _iter_time(start=None, **kwargs):
+    day = start or datetime.datetime.today()
+    intv = datetime.timedelta(**kwargs)
+    while day.year >= 1900:
+        yield day.strftime('%Y%m%d')
+        day = day - intv
+
+def _iter_days(start = None):
+    return self._iter_time(start, days=1)
+
 
 class View(CassandraBase):
-    """A view"""
-    family = ColumnFamily
+    """A regular view."""
 
-    def __init__(self, start='', stop='', offset=0, limit=100):
-        super(View, self).__init__()
-        self.pk = self._gen_pk()
-        self.start, self.stop = start, stop
-        self.offset, self.limit = offset, limit
+    def __init__(self, view_key=None, record_key=None, record_class=None):
+        CassandraBase.__init__(self)
 
-    def view_keys(self, start=''):
-        "Return a sequence of keys representing the partitions of this view."
-        return ()
+        self.chunk_size = 100
+        self.key = view_key
+        self.record_key = record_key
+        self.record_class = record_class or Record
 
-    def current_key(self):
-        """Return the current key to append objects to."""
-        k = self.view_keys()
-        try:
-            return k[0]
-        except TypeError:
-            key = k.next()
-            k.close()
-            return key
-        raise Exception("I don't know how to cope with these keys.")
+    def __repr__(self):
+        return "%s: %s" % (self.__class__.__name__, self.key)
 
-    def _iter_partition_keys(self, partition_key):
-        """Return keys in one partition of the view."""
+    def _keys(self):
+        """Return keys in the view."""
         client = self._get_cas()
-        last_col, offset, limit = '', 0, 100
+        assert isinstance(client, Client), \
+            "Incorrect client instance: %s" % client.__class__
+        last_col = ""
+        chunk_size = self.chunk_size
+        passes = 0
         while True:
-            cols = client.get_slice(self.pk.table, partition_key,
-                                    cassandra.ColumnParent(self.pk.family) ,
-                                    last_col, '', True, limit)
-            if len(cols) == 0: raise StopIteration()
-            for col in cols: yield col.value
-            offset, last_col = 1, col.name
+            fudge = int(passes > 0)
+            cols = client.get_slice(
+                self.key.keyspace, self.key.key, self.key,
+                SlicePredicate(slice_range=SliceRange(
+                        last_col, "", 0, chunk_size + fudge)),
+                ConsistencyLevel.ONE)
 
-            if len(cols) < limit: raise StopIteration()
+            if len(cols) == 0:
+                raise StopIteration()
 
-    def _iter_keys(self):
-        """Iterate over object keys for a given view key"""
-        for partk in self.view_keys():
-            for key in self._iter_partition_keys(partk):
-                yield key
+            for obj in cols[fudge:]:
+                col = obj.column
+                yield self.record_key.clone(key=col.value)
 
-        raise StopIteration()
+            last_col = col.name
+            passes += 1
+
+            if len(cols) < self.chunk_size:
+                raise StopIteration()
 
     def __iter__(self):
         """Iterate over all objects in this view."""
-        return (self.family().load(key) for key in self._iter_keys())
+        return (self.record_class().load(key) for key in self._keys())
 
-    def _iter_time(self, start=None, **kwargs):
-        day = start or datetime.datetime.today()
-        intv = datetime.timedelta(**kwargs)
-        while day.year >= 1900:
-            yield day.strftime('%Y%m%d')
-            day = day - intv
+    def append(self, record):
+        assert isinstance(record, Record), \
+            "Can't append non-record type %s to view %s" % \
+            (record.__class__, self.__class__)
+        ts = record.timestamp()
+        path = self.key.clone(column="%s.%s" % (str(ts), record.key.key))
+        self._get_cas().insert(self.key.keyspace, self.key.key,
+                               path, record.key.key, ts, 0)
 
-    def _iter_days(self, start = None):
-        return self._iter_time(start, days=1)
 
-    def __getitem__(self, item):
-        # Fast-forward
-        i = 0
-        while i < item:
-            self.__iter__().next()
-            i += 1
-        return self.__iter__().next()
+class PartitionedView(object):
+    """A Lazyboy view which is partitioned across rows."""
+    def __init__(self, view_key=None, view_class=None):
+        self.view_key = view_key
+        self.view_class = view_class
 
-    def append(self, column):
-        ts = time.time()
-        # This is a workaround, since we can't use `:' in column names yet.
-        colname = hashlib.md5(column.pk.key).hexdigest() + '.' + str(ts)
-        path = cassandra.ColumnPath(self.pk.family, None, colname)
-        self._get_cas().insert(self.pk.table, self.current_key(),
-                               path, column.pk.key, ts, 0)
+    def partition_keys():
+        """Return a sequence of row keys for the view partitions."""
+        return ()
+
+    def _get_view(self, key):
+        """Return an instance of a view for a partition key."""
+        return self.view_class(self.view_key.clone(key=key))
+
+    def __iter__(self):
+        """Iterate over records in the view."""
+        for view in (self._get_view(key) for key in self.partition_keys()):
+            for record in view:
+                yield record
+
+    def _append_view(self, record):
+        """Return the view which this record should be appended to.
+
+        This defaults to the first view from partition_keys, but you
+        can partition by anything, e.g. first letter of some field in
+        the record.
+        """
+        keys = self.partition_keys()
+        if hasattr(keys, '__iter__'):
+            key = keys.next()
+            keys.close()
+        else:
+            key = keys[0]
+
+        return self._get_view(key)
+
+    def append(self, record):
+        """Append a record to the view."""
+        return self._append_view(record).append(record)
