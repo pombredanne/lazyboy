@@ -9,7 +9,7 @@ import time
 from itertools import ifilterfalse as filternot
 
 from cassandra.ttypes import Column, SuperColumn, ColumnOrSuperColumn, \
-    BatchMutation, SlicePredicate, SliceRange, ConsistencyLevel
+    SlicePredicate, SliceRange, ConsistencyLevel
 
 from lazyboy.base import CassandraBase
 from lazyboy.key import Key
@@ -161,14 +161,12 @@ class Record(CassandraBase, dict):
 
         # Update items
         if changed:
-            client.batch_insert(self.key.keyspace,
-                                self._get_mutation(self.key, changed),
-                                ConsistencyLevel.ONE)
+            client.batch_insert(*self._get_batch_args(self.key, changed))
 
         self._original = self._columns
         return self
 
-    def _get_mutation(self, key, columns):
+    def _get_batch_args(self, key, columns):
         """Return a BatchMutation for the given key and columns."""
         cfmap = {}
         if not key.is_super():
@@ -178,7 +176,8 @@ class Record(CassandraBase, dict):
                                columns=columns)
             cols = [ColumnOrSuperColumn(super_column=scol)]
 
-        return BatchMutation(key.key, {key.column_family: cols})
+        return (key.keyspace, key.key, {key.column_family: cols},
+                ConsistencyLevel.ONE)
 
     def remove(self):
         """Remove this record from Cassandra."""

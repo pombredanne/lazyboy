@@ -11,8 +11,7 @@ import uuid
 import random
 import unittest
 
-from cassandra.ttypes import Column, ColumnOrSuperColumn, ColumnParent, \
-    BatchMutation
+from cassandra.ttypes import Column, ColumnOrSuperColumn, ColumnParent
 
 from lazyboy.connection import Client
 from lazyboy.key import Key
@@ -23,7 +22,7 @@ from test_base import CassandraBaseTest
 
 
 _last_cols = []
-_mutations = []
+_inserts = []
 class MockClient(Client):
     """A mock Cassandra client which returns canned responses"""
     def get_slice(self, *args, **kwargs):
@@ -37,8 +36,8 @@ class MockClient(Client):
         _last_cols.extend(cols)
         return cols
 
-    def batch_insert(self, table, batch_mutation, block_for):
-        _mutations.append(batch_mutation)
+    def batch_insert(self, keyspace, key, cfmap, consistency_level):
+        _inserts.append(cfmap)
         return True
 
 
@@ -177,19 +176,14 @@ class RecordTest(CassandraBaseTest):
         res = self.object.save()
         self.assert_(res == self.object,
                      "Self not returned from Record.save")
-        mutation = _mutations[len(_mutations) - 1]
-        self.assert_(isinstance(mutation, BatchMutation),
-                     "Mutation class is %s, not BatchMutation." %
-                     (mutation.__class__,))
+        cfmap = _inserts[-1]
+        self.assert_(isinstance(cfmap, dict))
 
-        self.assert_(mutation.key == self.object.key.key,
-                     "Mutation key is %s, not PK key %s." \
-                         % (mutation.key, self.object.key.key))
-        self.assert_(self.object.key.column_family in mutation.cfmap,
-                     "PK family %s not in mutation cfmap" %
+        self.assert_(self.object.key.column_family in cfmap,
+                     "PK family %s not in cfmap" %
                      (self.object.key.column_family,))
 
-        for corsc in mutation.cfmap[self.object.key.column_family]:
+        for corsc in cfmap[self.object.key.column_family]:
             self.assert_(corsc.__class__ == ColumnOrSuperColumn)
             self.assert_(corsc.column and not corsc.super_column)
             col = corsc.column
