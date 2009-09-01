@@ -17,7 +17,7 @@ from thrift.transport import TSocket
 
 import lazyboy.connection as conn
 from lazyboy.exceptions import *
-from test_columnfamily import MockClient
+from test_record import MockClient
 
 
 class ConnectionTest(unittest.TestCase):

@@ -37,7 +37,7 @@ def get_pool(name):
         _CLIENTS[key] = Client(_SERVERS[name])
         return _CLIENTS[key]
     except Exception, e:
-        raise ErrorCassandraClientNotFound
+        raise ErrorCassandraClientNotFound("Pool `%s' is not defined." % name)
 
 
 class Client(object):
