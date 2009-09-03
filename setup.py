@@ -9,7 +9,7 @@
 from setuptools import setup, find_packages
 
 setup(name="Lazyboy",
-      version='0.7.0dev1',
+      version='0.7.0dev2',
       description="Object non-relational manager for Cassandra",
       url="http://github.com/digg/lazyboy/tree/master",
       packages=find_packages(),
@@ -18,6 +18,6 @@ setup(name="Lazyboy",
       author_email="ian@digg.com",
       license="BSD",
       keywords="database cassandra",
-      install_requires=['Thrift==0.1', 'Cassandra==svn810997'],
+      install_requires=['Thrift', 'Cassandra==svn810997-1'],
       tests_require=['nose', 'coverage'],
       dependency_links=["http://github.com/ieure/python-cassandra/downloads"])
