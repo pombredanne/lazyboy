@@ -17,7 +17,7 @@ from cassandra.ttypes import ColumnOrSuperColumn
 from lazyboy.key import Key
 from lazyboy.record import Record
 from lazyboy.recordset import valid, missing, modified, RecordSet, KeyRecordSet
-from lazyboy.exceptions import ErrorMissingKey
+from lazyboy.exceptions import ErrorMissingKey, ErrorMissingField
 
 def rand_set(records):
     return sample(records, randrange(1, len(records)))
@@ -124,6 +124,52 @@ class TestRecordSet(unittest.TestCase):
             self.assert_(self.object[record.key.key] is record)
 
         self.assert_(self.object.values() == records)
+
+    def test_save_failures(self):
+        """Make sure RecordSet.save() aborts if there are invalid records."""
+
+        records = self._get_records(5, keyspace="eggs", column_family="bacon")
+
+        for record in records:
+            record.is_modified = lambda: True
+            record.valid = lambda: False
+            self.object.append(record)
+
+        self.assertRaises(ErrorMissingField, self.object.save)
+
+    def test_save(self):
+        """Make sure RecordSet.save() works."""
+
+        return
+        is_modified = {}
+        def record_save(self):
+            """Dummy method which removes the modified flag from a record."""
+            is_modified[self.key.key] = False
+            return self
+
+        def record_is_modified(self):
+            """Dummy method which returns the fake modified state of a record."""
+            return is_modified[self.key.key]
+
+        try:
+            _real_save = Record.save
+            _real_is_modified = Record.is_modified
+
+            Record.save = record_save
+            Record.is_modified = record_is_modified
+
+            records = self._get_records(5, keyspace="eggs", column_family="bacon")
+
+            for record in records:
+                is_modified[record.key.key] = True
+                self.object.append(record)
+
+            self.object.save()
+            self.assert_(not any([r.is_modified() for r in self.object.values()]))
+        finally:
+            Record.save = _real_save
+            Record.is_modified = _real_is_modified
+
 
 class KeyRecordSetTest(unittest.TestCase):
     def setUp(self):
