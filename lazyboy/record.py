@@ -167,7 +167,7 @@ class Record(CassandraBase, dict):
         return self
 
     def _get_batch_args(self, key, columns):
-        """Return a BatchMutation for the given key and columns."""
+        """Return args for batch_insert for the given key and columns."""
         cfmap = {}
         if not key.is_super():
             cols = [ColumnOrSuperColumn(column=col) for col in columns]
