@@ -18,6 +18,6 @@ setup(name="Lazyboy",
       author_email="ian@digg.com",
       license="BSD",
       keywords="database cassandra",
-      install_requires=['Thrift==0.1', 'Cassandra==svn809793'],
+      install_requires=['Thrift==0.1', 'Cassandra==svn810997'],
       tests_require=['nose', 'coverage'],
       dependency_links=["http://github.com/ieure/python-cassandra/downloads"])
