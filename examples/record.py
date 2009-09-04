@@ -16,6 +16,7 @@
 
 
 from lazyboy import *
+from lazyboy.key import Key
 
 
 # Define your cluster(s)
@@ -31,7 +32,7 @@ class UserKey(Key):
 
 
 
-xo# Subclass Record to create an object of the correct type.
+# Subclass Record to create an object of the correct type.
 class User(record.Record):
     """A class representing a user in Cassandra."""
 

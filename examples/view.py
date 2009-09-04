@@ -16,6 +16,7 @@
 from pprint import pprint
 
 from lazyboy import *
+from lazyboy.key import Key
 from record import UserKey, User
 
 connection.add_pool('UserData', ['localhost:9160'])
