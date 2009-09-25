@@ -8,6 +8,7 @@
 import time
 import datetime
 import hashlib
+import uuid
 
 from cassandra.ttypes import ColumnPath, ColumnParent, \
     SlicePredicate, SliceRange, ConsistencyLevel
@@ -42,12 +43,13 @@ class View(CassandraBase):
     def __repr__(self):
         return "%s: %s" % (self.__class__.__name__, self.key)
 
-    def _keys(self):
+    def _keys(self, start_col=None, end_col=None):
         """Return keys in the view."""
         client = self._get_cas()
         assert isinstance(client, Client), \
             "Incorrect client instance: %s" % client.__class__
-        last_col = ""
+        last_col = start_col or ""
+        end_col = end_col or ""
         chunk_size = self.chunk_size
         passes = 0
         while True:
@@ -55,7 +57,7 @@ class View(CassandraBase):
             cols = client.get_slice(
                 self.key.keyspace, self.key.key, self.key,
                 SlicePredicate(slice_range=SliceRange(
-                        last_col, "", 0, chunk_size + fudge)),
+                        last_col, end_col, 0, chunk_size + fudge)),
                 ConsistencyLevel.ONE)
 
             if len(cols) == 0:
@@ -75,14 +77,18 @@ class View(CassandraBase):
         """Iterate over all objects in this view."""
         return (self.record_class().load(key) for key in self._keys())
 
+    def _record_key(self, record=None):
+        """Return the column name for a given record."""
+        return record.key.key if record else str(uuid.uuid1())
+
     def append(self, record):
         assert isinstance(record, Record), \
             "Can't append non-record type %s to view %s" % \
             (record.__class__, self.__class__)
-        ts = record.timestamp()
-        path = self.key.clone(column="%s.%s" % (str(ts), record.key.key))
-        self._get_cas().insert(self.key.keyspace, self.key.key,
-                               path, record.key.key, ts, 0)
+        self._get_cas().insert(
+            self.key.keyspace, self.key.key,
+            self.key.get_path(column=self._record_key(record)),
+            record.key.key, record.timestamp(), ConsistencyLevel.ONE)
 
 
 class PartitionedView(object):
