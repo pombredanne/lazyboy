@@ -1,0 +1,29 @@
+Lazyboy
+=======
+
+Lazyboy is a Python library for accessing Cassandra, which wraps the Thrift client library and provides a nicer interface. You should be familiar with Cassandra and it’s concepts before you attempt to use Lazyboy.
+
+
+Concepts
+--------
+
+ 1. **Record.** A record is a set of columns. This can be the columns in a row in a ColumnFamily, or the columns in a SuperColumn. Records are represented as Python dictionaries. Records include _all_ columns available in the Row or SuperColumn.
+
+ 2. **Key.** Lazyboy’s keys are a superset of the ColumnPath object defined in the Thrift interface (they're children of ColumnParent). In addition to the inherited fields, they add `keyspace` and `key`, thus containing all information needed to fetch the columns of a Record.
+
+ 3. **RecordSet.** As the name implies, a RecordSet is a collection of Records. RecordSets offer aggregate save and load functions to minimize round-trips to the Cassandra cluster.
+
+ 4. **View.** A view is a variant of a RecordSet which stores itself persistently in a row in Cassandra, and references Records stored elsewhere. You can use Views to build secondary indexes into your data in Cassandra.
+
+ 5. **Pool.** Pools are how Lazyboy maps Keyspaces to Cassandra clusters. Pools consist of one or more Cassandra nodes, which are expected to serve the same data. It’s implicit that the Keyspace of a record is the name of the pool it’s in.
+
+Usage
+-----
+
+See the examples and unit tests for now.
+
+
+License
+-------
+
+Lazyboy is provided under the three-clause BSD License. See `LICENSE` for the specifics.
