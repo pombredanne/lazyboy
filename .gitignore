@@ -7,3 +7,7 @@ include
 .coverage
 coverage
 dist/*
+debian/files
+debian/python-lazyboy*
+debian/stamp-*
+python-build-stamp*
