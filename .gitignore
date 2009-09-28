@@ -1,7 +1,9 @@
 *.egg-info
+*.egg
 .Python
 bin
 lib
 include
 .coverage
 coverage
+dist/*
