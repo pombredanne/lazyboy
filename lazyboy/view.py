@@ -33,6 +33,12 @@ class View(CassandraBase):
     """A regular view."""
 
     def __init__(self, view_key=None, record_key=None, record_class=None):
+        assert not view_key or isinstance(view_key, Key)
+        assert not record_key or isinstance(record_key, Key)
+        assert not record_class or (isinstance(record_class, type) and
+                                    (record_class is Record or
+                                     Record in record_class.__bases__))
+
         CassandraBase.__init__(self)
 
         self.chunk_size = 100
