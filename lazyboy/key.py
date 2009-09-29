@@ -8,7 +8,7 @@
 import uuid
 from copy import copy
 
-from cassandra.ttypes import ColumnPath, ColumnParent
+from cassandra.ttypes import ColumnPath, ColumnParent, ConsistencyLevel
 
 from lazyboy.base import CassandraBase
 from lazyboy.exceptions import ErrorIncompleteKey
@@ -23,6 +23,7 @@ class Key(ColumnParent, CassandraBase):
 
         self.keyspace, self.key = keyspace, key
         ColumnParent.__init__(self, column_family, super_column)
+        CassandraBase.__init__(self)
 
     def _gen_uuid(self):
         """Generate a UUID for this object"""
@@ -54,6 +55,13 @@ class Key(ColumnParent, CassandraBase):
         """Return a clone of this key with keyword args changed"""
         return DecoratedKey(self, **kwargs)
 
+    def range(self, start="", finish="", count=100):
+        """Return a range of keys."""
+        cas = self._get_cas(self.keyspace)
+        return cas.get_key_range(
+            self.keyspace, self.column_family, start, finish, count,
+            ConsistencyLevel.ONE
+        )
 
 class DecoratedKey(Key):
     def __init__(self, parent_key, **kwargs):
