@@ -55,13 +55,20 @@ class Key(ColumnParent, CassandraBase):
         """Return a clone of this key with keyword args changed"""
         return DecoratedKey(self, **kwargs)
 
-    def range(self, start="", finish="", count=100):
+class KeyRange(CassandraBase):
+    def __call__(self, key, start="", finish="", count=100):
         """Return a range of keys."""
-        cas = self._get_cas(self.keyspace)
-        return cas.get_key_range(
-            self.keyspace, self.column_family, start, finish, count,
+        cas = self._get_cas(key.keyspace)
+        keys = cas.get_key_range(
+            key.keyspace, key.column_family, start, finish, count,
             ConsistencyLevel.ONE
         )
+
+        return [Key(keyspace=key.keyspace, 
+                    column_family=key.column_family,
+                    key=k) for k in keys]
+
+get_range = KeyRange()
 
 class DecoratedKey(Key):
     def __init__(self, parent_key, **kwargs):
