@@ -7,7 +7,7 @@ Build-Depends-Indep: python-dev, python-support (>= 0.2.3)
 Standards-Version: 3.7.2
 XS-Python-Version: all
 
-Package: python-digg-bobtail
+Package: python-lazyboy
 Architecture: all
 XB-Python-Version: ${python:Versions}
 Depends: ${python:Depends}, python-cassandra (>= 0.4.0), python-cassandra (<< 0.5.0)
