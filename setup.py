@@ -9,7 +9,7 @@
 from setuptools import setup, find_packages
 
 setup(name="Lazyboy",
-      version='0.7.0',
+      version='0.7.1',
       description="Object non-relational manager for Cassandra",
       url="http://github.com/digg/lazyboy/tree/master",
       packages=find_packages(),

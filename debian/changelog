@@ -1,3 +1,9 @@
+python-lazyboy (0.7.1-1) unstable; urgency=low
+
+  * Don't allow setting Record values to None.
+
+ -- Ian Eure <ian@digg.com>  Thu,  1 Oct 2009 12:27:25 -0700
+
 python-lazyboy (0.7.0-2) unstable; urgency=low
 
   * Increment version to fix build.
