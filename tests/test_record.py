@@ -16,7 +16,8 @@ from cassandra.ttypes import Column, ColumnOrSuperColumn, ColumnParent
 from lazyboy.connection import Client
 from lazyboy.key import Key
 from lazyboy.record import Record
-from lazyboy.exceptions import ErrorMissingField, ErrorMissingKey
+from lazyboy.exceptions import ErrorMissingField, ErrorMissingKey, \
+    ErrorInvalidValue
 
 from test_base import CassandraBaseTest
 
@@ -97,6 +98,8 @@ class RecordTest(CassandraBaseTest):
 
     def test_setitem_getitem(self):
         data = {'id': 'eggs', 'title': 'bacon'}
+        self.assertRaises(ErrorInvalidValue, self.object.__setitem__,
+                          "eggs", None)
         for k in data:
             self.object[k] = data[k]
             self.assert_(self.object[k] == data[k],

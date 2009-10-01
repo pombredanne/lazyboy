@@ -22,6 +22,10 @@ class ErrorInvalidField(LazyboyException):
     pass
 
 
+class ErrorInvalidValue(LazyboyException):
+    pass
+
+
 class ErrorMissingKey(LazyboyException):
     pass
 
