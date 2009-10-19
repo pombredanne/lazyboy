@@ -1,3 +1,13 @@
+python-lazyboy (0.7.2-1) unstable; urgency=low
+
+  * Fix issue with using classes which indirectly extended Record in Views.
+  * Write some more helpful documentation.
+  * Declare proper Python dependency for Debian.
+  * Add Joe Stump's key range scan support.
+  * Depend on Cassandra 0.4.0 or better instead of only 0.4.0.
+
+ -- Ian Eure <ian@digg.com>  Mon, 19 Oct 2009 14:32:31 -0700
+
 python-lazyboy (0.7.1-1) unstable; urgency=low
 
   * Don't allow setting Record values to None.
