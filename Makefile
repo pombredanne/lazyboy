@@ -1,3 +1,4 @@
+SRCDIR      = lazyboy
 PYTHON     ?= $(shell test -f bin/python && echo bin/python || which python)
 PYVERS      = $(shell $(PYTHON) -c 'import sys; print "%s.%s" % sys.version_info[0:2]')
 VIRTUALENV ?= $(shell test -x `which virtualenv` && which virtualenv || \
@@ -8,6 +9,7 @@ SETUP       = $(PYTHON) ./setup.py
 PLATFORM    = $(shell $(PYTHON) -c "from pkg_resources import get_build_platform; print get_build_platform()")
 EGG         = $(shell $(SETUP) --fullname)-py$(PYVERS).egg
 SOURCES     = $(shell find . -type f -name \*.py)
+COVERED    := $(shell find $(SRCDIR) -type f -name \*.py -not -name 'test_*')
 
 .PHONY: test dev clean extraclean
 
@@ -17,12 +19,18 @@ egg: dist/$(EGG)
 dist/$(EGG):
 	$(SETUP) bdist_egg
 
+sdist:
+	$(SETUP) sdist
+
+deb:
+	dpkg-buildpackage -rfakeroot -us -uc -b
+
 test:
 	$(SETUP) test
 
 coverage: coverage/index.html
 coverage/index.html: .coverage
-	coverage -b -i -d $@
+	coverage -b -i -d $(@D) $(COVERED)
 
 .coverage: $(SOURCES)
 	-coverage -e -x setup.py test
