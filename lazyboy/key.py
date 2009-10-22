@@ -13,8 +13,11 @@ from cassandra.ttypes import ColumnPath, ColumnParent, ConsistencyLevel
 from lazyboy.base import CassandraBase
 from lazyboy.exceptions import ErrorIncompleteKey
 
+
 class Key(ColumnParent, CassandraBase):
+
     """A key which determines how to reach a record."""
+
     def __init__(self, keyspace=None, column_family=None, key=None,
                  super_column=None):
         if not keyspace or not column_family:
@@ -57,9 +60,11 @@ class Key(ColumnParent, CassandraBase):
 
 
 class DecoratedKey(Key):
+
     def __init__(self, parent_key, **kwargs):
         self.parent_key = parent_key
-        for (k, v) in kwargs.items(): setattr(self, k, v)
+        for (k, v) in kwargs.items():
+            setattr(self, k, v)
 
     def __getattr__(self, attr):
         if attr in self.__dict__:

@@ -25,6 +25,7 @@ class Generic(object):
 
 
 class ConnectionTest(unittest.TestCase):
+
     def setUp(self):
         self.pool = 'testing'
         self.__client = conn.Client
@@ -37,6 +38,7 @@ class ConnectionTest(unittest.TestCase):
 
 
 class TestPools(ConnectionTest):
+
     def test_add_pool(self):
         servers = ['localhost:1234', 'localhost:5678']
         conn.add_pool(__name__, servers)
@@ -53,6 +55,7 @@ class TestPools(ConnectionTest):
 
 
 class TestClient(ConnectionTest):
+
     def setUp(self):
         super(TestClient, self).setUp()
         self.client = MockClient(['localhost:1234', 'localhost:5678'])
@@ -61,6 +64,7 @@ class TestClient(ConnectionTest):
         pass
 
     def test_build_server(self):
+
         class ErrorFailedBuild(Exception):
             pass
 
@@ -96,17 +100,20 @@ class TestClient(ConnectionTest):
         self.assert_(self.client._clients == servers)
 
     def test_connect(self):
+
         def raise_(except_):
+
             def __r():
                 raise except_
             return __r
 
         class _MockTransport(object):
+
             def __init__(self, *args, **kwargs):
                 self.calls = {'open': 0, 'close': 0}
 
             def open(self):
-                self.calls['open'] +=1
+                self.calls['open'] += 1
 
             def close(self):
                 self.calls['close'] += 1
@@ -134,7 +141,6 @@ class TestClient(ConnectionTest):
         self.assert_(self.client._connect(client) == False)
         self.assert_(client.transport.calls['close'] == ncloses + 1)
 
-
     def test_getattr(self):
         getter = self.client.__getattr__('get_slice')
         self.assert_(callable(getter))
@@ -153,6 +159,7 @@ class TestClient(ConnectionTest):
         self.assert_(getter() is "slice")
 
         def raises(exception_class):
+
             def raise_(*args, **kwargs):
                 raise exception_class(*args, **kwargs)
             return raise_

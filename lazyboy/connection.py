@@ -8,7 +8,8 @@
 #
 
 import inspect
-import random, os
+import random
+import os
 import threading
 
 from cassandra import *
@@ -41,6 +42,7 @@ def get_pool(name):
 
 
 class Client(object):
+
     def __init__(self, servers):
         self._servers = servers
         self._clients = [s for s in [self._build_server(*server.split(":")) \
@@ -92,6 +94,7 @@ class Client(object):
 
     def __getattr__(self, attr):
         """Wrap every __func__ call to Cassandra client and connect()"""
+
         def func(*args, **kwargs):
             client = self._get_server()
             if self._connect(client):

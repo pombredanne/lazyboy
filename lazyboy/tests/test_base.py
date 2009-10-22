@@ -12,10 +12,12 @@ import lazyboy.connection
 from lazyboy.key import Key
 from lazyboy.exceptions import ErrorUnknownKeyspace, ErrorIncompleteKey
 
+
 class CassandraBaseTest(unittest.TestCase):
+
     def __init__(self, *args, **kwargs):
         super(CassandraBaseTest, self).__init__(*args, **kwargs)
-        self.class_ =  CassandraBase
+        self.class_ = CassandraBase
 
     def _get_object(self, *args, **kwargs):
         return self.class_(*args, **kwargs)

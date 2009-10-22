@@ -9,7 +9,9 @@
 from lazyboy.exceptions import ErrorUnknownKeyspace, ErrorIncompleteKey
 import lazyboy.connection as connection
 
+
 class CassandraBase(object):
+
     """The base class for all Cassandra-accessing objects."""
 
     def __init__(self):
@@ -25,4 +27,3 @@ class CassandraBase(object):
             self._clients[keyspace] = connection.get_pool(keyspace)
 
         return self._clients[keyspace]
-

@@ -25,8 +25,12 @@ from test_base import CassandraBaseTest
 
 _last_cols = []
 _inserts = []
+
+
 class MockClient(Client):
+
     """A mock Cassandra client which returns canned responses"""
+
     def get_slice(self, *args, **kwargs):
         [_last_cols.pop() for i in range(len(_last_cols))]
         cols = []
@@ -44,6 +48,7 @@ class MockClient(Client):
 
 
 class RecordTest(CassandraBaseTest):
+
     class Record(Record):
         _key = {'table': 'eggs',
                 'family': 'bacon'}
@@ -154,7 +159,8 @@ class RecordTest(CassandraBaseTest):
     def get_mock_cassandra(self, keyspace=None):
         """Return a mock cassandra instance"""
         mock = None
-        if not mock: mock = MockClient(['localhost:1234'])
+        if not mock:
+            mock = MockClient(['localhost:1234'])
         return mock
 
     def test_load(self):

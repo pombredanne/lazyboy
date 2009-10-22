@@ -6,6 +6,7 @@
 # Author: Ian Eure <ian@digg.com>
 #
 
+
 class LazyboyException(Exception):
     pass
 

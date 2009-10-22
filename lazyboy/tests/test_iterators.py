@@ -46,7 +46,7 @@ class SliceIteratorTest(unittest.TestCase):
         scol = ttypes.SuperColumn(name="spam", columns=cols)
         corsc = ttypes.ColumnOrSuperColumn(super_column=scol)
 
-        self.client.get_slice = lambda  *args: [corsc]
+        self.client.get_slice = lambda *args: [corsc]
 
         slice_iterator = iterators.slice_iterator(key)
         self.assert_(isinstance(slice_iterator, types.GeneratorType))
@@ -107,4 +107,4 @@ class SliceIteratorTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-   unittest.main()
+    unittest.main()

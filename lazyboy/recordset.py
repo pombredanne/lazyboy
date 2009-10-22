@@ -18,14 +18,17 @@ from lazyboy.record import Record
 from lazyboy.base import CassandraBase
 from lazyboy.exceptions import ErrorMissingKey, ErrorMissingField
 
+
 def valid(records):
     """Returns True if all records in the set are valid."""
     return all([record.valid() for record in records])
+
 
 def missing(records):
     """Returns a tuple indicating any fields missing from the records
     in the set."""
     return dict([[r.key.key, r.missing()] for r in records if not r.valid()])
+
 
 def modified(records):
     """Returns a tuple of modifiedrecords in the set."""
@@ -33,6 +36,7 @@ def modified(records):
 
 
 class RecordSet(CassandraBase, UserDict):
+
     """A set of Lazyboy records."""
 
     def __init__(self, records=None):
@@ -82,7 +86,7 @@ class KeyRecordSet(RecordSet):
 
     def _batch_load(self, record_class, keys):
         """Return an iterator of records for the given keys."""
-        for keyspace, keys in groupby(keys,attrgetter('keyspace')):
+        for keyspace, keys in groupby(keys, attrgetter('keyspace')):
             client = self._get_cas(keyspace)
             for cf, by_cf in groupby(keys, attrgetter('column_family')):
                 records = client.multiget_slice(

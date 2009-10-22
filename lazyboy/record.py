@@ -54,12 +54,15 @@ class Record(CassandraBase, dict):
         """Update the object as with dict.update. Returns None."""
         if arg:
             if hasattr(arg, 'keys'):
-                for key in arg: self[key] = arg[key]
+                for key in arg:
+                    self[key] = arg[key]
             else:
-                for key, val in arg: self[key] = val
+                for (key, val) in arg:
+                    self[key] = val
 
         if kwargs:
-            for key in kwargs: self[key] = kwargs[key]
+            for key in kwargs:
+                self[key] = kwargs[key]
         return self
 
     def sanitize(self, value):
@@ -82,6 +85,7 @@ class Record(CassandraBase, dict):
             raise ErrorInvalidValue("You may not set an item to None.")
 
         value = self.sanitize(value)
+
         # If this doesn't change anything, don't record it
         _orig = self._original.get(item)
         if _orig and _orig.value == value:
@@ -104,7 +108,8 @@ class Record(CassandraBase, dict):
         dict.__delitem__(self, item)
         # Don't record this as a deletion if it wouldn't require a remove()
         self._deleted[item] = item in self._original
-        if item in self._modified: del self._modified[item]
+        if item in self._modified:
+            del self._modified[item]
         del self._columns[item]
 
     def _inject(self, key, columns):
@@ -178,7 +183,6 @@ class Record(CassandraBase, dict):
 
     def _get_batch_args(self, key, columns):
         """Return a BatchMutation for the given key and columns."""
-        cfmap = {}
         if not key.is_super():
             cols = [ColumnOrSuperColumn(column=col) for col in columns]
         else:

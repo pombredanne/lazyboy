@@ -13,7 +13,9 @@ from cassandra.ttypes import ColumnPath
 from lazyboy.key import Key
 from lazyboy.exceptions import ErrorIncompleteKey
 
+
 class KeyTest(unittest.TestCase):
+
     def __init__(self, *args, **kwargs):
         super(KeyTest, self).__init__(*args, **kwargs)
         self.allowed = ({'keyspace': 'egg', 'column_family': 'sausage',
@@ -41,7 +43,6 @@ class KeyTest(unittest.TestCase):
         self.assert_(key._gen_uuid() != key._gen_uuid(),
                      "Unique IDs aren't very unique.")
 
-
     def test_super(self):
         self.assert_(not Key(keyspace='eggs', column_family='bacon',
                              key='sausage').is_super())
@@ -59,7 +60,7 @@ class KeyTest(unittest.TestCase):
         self.assert_(str(x) == str(pk))
 
     def test_repr(self):
-        pk = Key(keyspace='eggs',key='spam',column_family='bacon')
+        pk = Key(keyspace='eggs', key='spam', column_family='bacon')
         self.assert_(unicode(pk) == repr(pk))
 
     def test_get_path(self):
@@ -78,7 +79,7 @@ class KeyTest(unittest.TestCase):
         self.assert_(path.column == "foo")
 
     def test_clone(self):
-        pk = Key(keyspace='eggs',key='spam',column_family='bacon')
+        pk = Key(keyspace='eggs', key='spam', column_family='bacon')
         ppkk = pk.clone()
         self.assert_(repr(pk) == repr(ppkk))
         for k in ('keyspace', 'key', 'column_family'):

@@ -18,6 +18,7 @@ from lazyboy.base import CassandraBase
 from lazyboy.record import Record
 from lazyboy.connection import Client
 
+
 def _iter_time(start=None, **kwargs):
     day = start or datetime.datetime.today()
     intv = datetime.timedelta(**kwargs)
@@ -25,11 +26,13 @@ def _iter_time(start=None, **kwargs):
         yield day.strftime('%Y%m%d')
         day = day - intv
 
-def _iter_days(start = None):
+
+def _iter_days(start=None):
     return _iter_time(start, days=1)
 
 
 class View(CassandraBase):
+
     """A regular view."""
 
     def __init__(self, view_key=None, record_key=None, record_class=None):
@@ -107,7 +110,9 @@ class View(CassandraBase):
                 
                 
 class PartitionedView(object):
+
     """A Lazyboy view which is partitioned across rows."""
+
     def __init__(self, view_key=None, view_class=None):
         self.view_key = view_key
         self.view_class = view_class

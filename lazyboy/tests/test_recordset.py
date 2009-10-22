@@ -19,10 +19,13 @@ from lazyboy.record import Record
 from lazyboy.recordset import valid, missing, modified, RecordSet, KeyRecordSet
 from lazyboy.exceptions import ErrorMissingKey, ErrorMissingField
 
+
 def rand_set(records):
     return sample(records, randrange(1, len(records)))
 
+
 class TestFunctions(unittest.TestCase):
+
     """Unit tests for record utility functions."""
 
     def setUp(self):
@@ -114,7 +117,8 @@ class TestRecordSet(unittest.TestCase):
         rs = RecordSet(records)
         self.assert_(len(rs) == len(records))
         self.assert_(rs.values() == records)
-        self.assert_(set(rs.keys()) == set(record.key.key for record in records))
+        self.assert_(set(rs.keys()) == set(record.key.key
+                                           for record in records))
 
     def test_append(self):
         """Make sure RecordSet.append() works."""
@@ -143,13 +147,14 @@ class TestRecordSet(unittest.TestCase):
 
         return
         is_modified = {}
+
         def record_save(self):
             """Dummy method which removes the modified flag from a record."""
             is_modified[self.key.key] = False
             return self
 
         def record_is_modified(self):
-            """Dummy method which returns the fake modified state of a record."""
+            """Return the fake modified state of a record."""
             return is_modified[self.key.key]
 
         try:
@@ -159,20 +164,23 @@ class TestRecordSet(unittest.TestCase):
             Record.save = record_save
             Record.is_modified = record_is_modified
 
-            records = self._get_records(5, keyspace="eggs", column_family="bacon")
+            records = self._get_records(
+                5, keyspace="eggs", column_family="bacon")
 
             for record in records:
                 is_modified[record.key.key] = True
                 self.object.append(record)
 
             self.object.save()
-            self.assert_(not any([r.is_modified() for r in self.object.values()]))
+            self.assert_(
+                not any([r.is_modified() for r in self.object.values()]))
         finally:
             Record.save = _real_save
             Record.is_modified = _real_is_modified
 
 
 class KeyRecordSetTest(unittest.TestCase):
+
     def setUp(self):
         self.object = KeyRecordSet()
 
@@ -182,7 +190,7 @@ class KeyRecordSetTest(unittest.TestCase):
             record = Record()
             record.key = Key('eggs', 'bacon')
             record['number'] = x
-            record['square'] = x*x
+            record['square'] = x * x
             records.append(record)
             keys.append(record.key)
 
@@ -211,7 +219,7 @@ class KeyRecordSetTest(unittest.TestCase):
             record = Record()
             record.key = Key('eggs', 'bacon')
             record['number'] = x
-            record['square'] = x*x
+            record['square'] = x * x
             records.append(record)
             keys.append(record.key)
 

@@ -58,7 +58,7 @@ class ViewTest(unittest.TestCase):
             except ValueError:
                 start = 0
             count = int(predicate.slice_range.count)
-            return cols[start:start+count]
+            return cols[start:start + count]
 
         view.chunk_size = chunk_size
         MockClient.get_slice = get_slice
@@ -89,10 +89,12 @@ class ViewTest(unittest.TestCase):
 
     def test_iter(self):
         """Test View.__iter__()"""
+
         class FakeKey(Key):
             pass
 
         class FakeRecord(Record):
+
             def load(self, key):
                 assert isinstance(key, FakeKey)
                 self.key = key
@@ -112,7 +114,8 @@ class ViewTest(unittest.TestCase):
 
     def test_append(self):
         view = self.object
-        MockClient.insert = lambda conn, keyspace, key, path, value, time, x: True
+        MockClient.insert = \
+            lambda conn, keyspace, key, path, value, time, x: True
         rec = Record()
         rec.key = Key(keyspace="eggs", column_family="bacon", key="tomato")
         self.object.append(rec)
@@ -187,4 +190,4 @@ class PartitionedViewTest(unittest.TestCase):
             self.assert_(self.object._append_view(record) == "one")
 
 if __name__ == '__main__':
-   unittest.main()
+    unittest.main()
