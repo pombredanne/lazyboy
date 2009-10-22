@@ -152,25 +152,29 @@ class Record(CassandraBase, dict):
 
         assert isinstance(self.key, Key), "Bad record key in save()"
 
+        # Marshal and save changes
+        changes = self._marshal()
+        self._save_internal(self.key, changes)
+
+        if changes['changed']:
+            self._modified.clear()
+        self._original = self._columns.copy()
+        return self
+
+    def _save_internal(self, key, changes):
+        """Internal save method."""
+
         client = self._get_cas()
-
-        # Marshal changes
-        (deleted, changed) = self._marshal().values()
-
         # Delete items
-
-        for path in deleted:
-            client.remove(self.key.keyspace, self.key.key, path,
+        for path in changes['deleted']:
+            client.remove(key.keyspace, key.key, path,
                           self.timestamp(), ConsistencyLevel.ONE)
         self._deleted.clear()
 
         # Update items
-        if changed:
-            client.batch_insert(*self._get_batch_args(self.key, changed))
-            self._modified.clear()
-        self._original = self._columns.copy()
-
-        return self
+        if changes['changed']:
+            client.batch_insert(*self._get_batch_args(
+                    key, changes['changed']))
 
     def _get_batch_args(self, key, columns):
         """Return a BatchMutation for the given key and columns."""
