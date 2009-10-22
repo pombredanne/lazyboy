@@ -60,6 +60,7 @@ class Record(CassandraBase, dict):
 
         if kwargs:
             for key in kwargs: self[key] = kwargs[key]
+        return self
 
     def sanitize(self, value):
         """Return a value appropriate for sending to Cassandra."""
