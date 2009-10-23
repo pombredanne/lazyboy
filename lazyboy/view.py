@@ -26,7 +26,7 @@ def _iter_time(start=None, **kwargs):
         day = day - intv
 
 def _iter_days(start = None):
-    return self._iter_time(start, days=1)
+    return _iter_time(start, days=1)
 
 
 class View(CassandraBase):
@@ -134,9 +134,8 @@ class PartitionedView(object):
         the record.
         """
         keys = self.partition_keys()
-        if hasattr(keys, '__iter__'):
+        if hasattr(keys, 'next'):
             key = keys.next()
-            keys.close()
         else:
             key = keys[0]
 
