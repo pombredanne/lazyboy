@@ -7,11 +7,12 @@
 
 import unittest
 import uuid
+import types
 from itertools import islice
 
 from cassandra.ttypes import Column, ColumnOrSuperColumn
 
-from lazyboy.view import View
+import lazyboy.view as view
 from lazyboy.key import Key
 from lazyboy.record import Record
 from test_record import MockClient
@@ -22,12 +23,16 @@ class ViewTest(unittest.TestCase):
 
     def setUp(self):
         """Prepare the text fixture."""
-        obj = View()
+        obj = view.View()
         obj.key = Key(keyspace='eggs', column_family='bacon',
                       key='dummy_view')
         obj.record_key = Key(keyspace='spam', column_family='tomato')
         obj._get_cas = lambda: MockClient(['localhost:1234'])
         self.object = obj
+
+    def test_repr(self):
+        """Test view.__repr__."""
+        self.assert_(isinstance(repr(self.object), str))
 
     def test_keys_types(self):
         """Ensure that View._keys() returns the correct type & keys."""
@@ -38,6 +43,8 @@ class ViewTest(unittest.TestCase):
             self.assert_(isinstance(key, Key))
             self.assert_(key.keyspace == view.record_key.keyspace)
             self.assert_(key.column_family == view.record_key.column_family)
+
+        view._keys("foo", "bar")
 
     def __base_view_test(self, view, ncols, chunk_size):
         """Base test for View._keys iteration."""
@@ -92,13 +99,13 @@ class ViewTest(unittest.TestCase):
                 return self
 
 
-        view = self.object
-        view.record_class = FakeRecord
+        view_ = self.object
+        view_.record_class = FakeRecord
         keys = [FakeKey(keyspace="eggs", column_family="bacon", key=x)
                               for x in range(10)]
-        view._keys = lambda: keys
+        view_._keys = lambda: keys
 
-        for record in view:
+        for record in view_:
             self.assert_(isinstance(record, FakeRecord))
             self.assert_(isinstance(record.key, FakeKey))
             self.assert_(record.key in keys)
@@ -110,6 +117,74 @@ class ViewTest(unittest.TestCase):
         rec.key = Key(keyspace="eggs", column_family="bacon", key="tomato")
         self.object.append(rec)
 
+
+class IterTimeTest(unittest.TestCase):
+
+    """Test lazyboy.view time iteration functions."""
+
+    def test_iter_time(self):
+        """Test _iter_time."""
+        iterator = view._iter_time(days=1)
+        first = 0
+        for x in range(10):
+            val = iterator.next()
+            self.assert_(val > first)
+
+    def test_test_iter_days(self):
+        """Test _iter_days."""
+        iterator = view._iter_days()
+        first = "19000101"
+        for x in range(10):
+            val = iterator.next()
+            self.assert_(val > first)
+
+
+class PartitionedViewTest(unittest.TestCase):
+
+    """Test lazyboy.view.PartitionedView."""
+
+    view_class = view.PartitionedView
+
+    def setUp(self):
+        """Prepare the text fixture."""
+        obj = view.PartitionedView()
+        obj.view_key = Key(keyspace='eggs', column_family='bacon',
+                      key='dummy_view')
+        obj.view_class = view.View
+        self.object = obj
+
+    def test_partition_keys(self):
+        """Test PartitionedView.partition_keys."""
+        keys = self.object.partition_keys()
+        self.assert_(isinstance(keys, list) or
+                     isinstance(keys, tuple) or
+                     isinstance(keys, types.GeneratorType))
+
+    def test_get_view(self):
+        """Test PartitionedView._get_view."""
+        partition = self.object._get_view(self.object.view_key)
+        self.assert_(isinstance(partition, self.object.view_class))
+
+    def test_iter(self):
+        """Test PartitionedView.__iter__."""
+        keys = ['eggs', 'bacon', 'tomato', 'sausage', 'spam']
+        self.object.partition_keys = lambda: keys
+        self.object._get_view = lambda key: [key]
+        gen = self.object.__iter__()
+        for record in gen:
+            self.assert_(record in keys)
+
+    def test_append_view(self):
+        """Test PartitionedView._append_view."""
+        record = Record()
+        self.object._get_view = lambda key: key
+        data = (('one', 'two'),
+                ['one', 'two'],
+                iter(('one', 'two')))
+
+        for data_set in data:
+            self.object.partition_keys = lambda: data_set
+            self.assert_(self.object._append_view(record) == "one")
 
 if __name__ == '__main__':
    unittest.main()

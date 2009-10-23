@@ -11,7 +11,8 @@ import uuid
 import random
 import unittest
 
-from cassandra.ttypes import Column, ColumnOrSuperColumn, ColumnParent
+from cassandra.ttypes import Column, SuperColumn, ColumnOrSuperColumn, \
+    ColumnParent
 
 from lazyboy.connection import Client
 from lazyboy.key import Key
@@ -52,7 +53,6 @@ class RecordTest(CassandraBaseTest):
         super(RecordTest, self).__init__(*args, **kwargs)
         self.class_ = self.Record
 
-
     def test_init(self):
         self.object = self._get_object({'id': 'eggs', 'title': 'bacon'})
         self.assert_(self.object['id'] == 'eggs')
@@ -79,6 +79,12 @@ class RecordTest(CassandraBaseTest):
         self.object._clean()
         for k in data:
             self.assert_(not k in self.object)
+
+    def test_sanitize(self):
+        self.assert_(isinstance(self.object.sanitize(u'ÜNICÖDE'), str))
+
+    def test_repr(self):
+        self.assert_(isinstance(repr(self.object), str))
 
     def test_update(self):
         data = {'id': 'eggs', 'title': 'bacon'}
@@ -119,7 +125,12 @@ class RecordTest(CassandraBaseTest):
 
             self.assert_(k not in self.object._deleted,
                          "Key was marked as deleted.")
-            self.assert_(k in self.object._modified, "Key not in modified list")
+            self.assert_(k in self.object._modified,
+                         "Key not in modified list")
+
+            del self.object[k]
+            self.object[k] = data[k]
+            self.assert_(k not in self.object._deleted)
 
     def test_delitem(self):
         data = {'id': 'eggs', 'title': 'bacon'}
@@ -157,6 +168,47 @@ class RecordTest(CassandraBaseTest):
         for col in cols.values():
             self.assert_(self.object[col.name] == col.value)
             self.assert_(self.object._columns[col.name] == col)
+
+    def test_get_batch_args(self):
+        data = {'eggs': "1", 'bacon': "2", 'sausage': "3"}
+        key = Key(keyspace='eggs', column_family='bacon', key='tomato')
+        self.object.update(data)
+        self.object.key = key
+
+        args = self.object._get_batch_args(
+            self.object.key, self.object._columns)
+        self.assert_(args[0] is key.keyspace)
+        self.assert_(args[1] is key.key)
+        self.assert_(isinstance(args[2], dict))
+        keys = args[2].keys()
+        self.assert_(len(keys) == 1)
+        self.assert_(keys[0] == key.column_family)
+        self.assert_(isinstance(args[2][key.column_family], list))
+        for val in args[2][key.column_family]:
+            self.assert_(isinstance(val, ColumnOrSuperColumn))
+            self.assert_(val.column in data.keys())
+            self.assert_(val.super_column is None)
+
+        key.super_column = "spam"
+        args = self.object._get_batch_args(
+            self.object.key, self.object._columns)
+        # print args
+        self.assert_(args[0] is key.keyspace)
+        self.assert_(args[1] is key.key)
+        self.assert_(isinstance(args[2], dict))
+        keys = args[2].keys()
+        self.assert_(len(keys) == 1)
+        self.assert_(keys[0] == key.column_family)
+        self.assert_(isinstance(args[2][key.column_family], list))
+        for val in args[2][key.column_family]:
+            self.assert_(isinstance(val, ColumnOrSuperColumn))
+            self.assert_(val.column is None)
+            self.assert_(isinstance(val.super_column, SuperColumn))
+            self.assert_(val.super_column.name is key.super_column)
+            self.assert_(isinstance(val.super_column.columns, dict))
+            for (name, col) in val.super_column.columns.items():
+                self.assert_(name in data.keys())
+                self.assert_(col.value == data[name])
 
     def test_save(self):
         self.assertRaises(ErrorMissingField, self.object.save)

@@ -92,6 +92,7 @@ class TestRecordSet(unittest.TestCase):
 
     def test_transform(self):
         """Make sure RecordSet._transoform() works correctly."""
+        self.assert_(self.object._transform([]) == {})
         records = self._get_records(5, keyspace="eggs", column_family="bacon")
         out = self.object._transform(records)
         self.assert_(len(out) == len(records))

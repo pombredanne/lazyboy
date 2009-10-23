@@ -20,6 +20,10 @@ from lazyboy.exceptions import *
 from test_record import MockClient
 
 
+class Generic(object):
+    pass
+
+
 class ConnectionTest(unittest.TestCase):
     def setUp(self):
         self.pool = 'testing'
@@ -107,8 +111,6 @@ class TestClient(ConnectionTest):
             def close(self):
                 self.calls['close'] += 1
 
-
-
         # Already connected
         client = self.client._clients[0]
         client.transport = _MockTransport()
@@ -134,7 +136,39 @@ class TestClient(ConnectionTest):
 
 
     def test_getattr(self):
-        pass
+        getter = self.client.__getattr__('get_slice')
+        self.assert_(callable(getter))
+
+        self.client._get_server = lambda: None
+        self.client._connect = lambda server: False
+        getter = self.client.__getattr__('get_slice')
+        self.assert_(getter() is None)
+
+        client = Generic()
+        client.get_slice = lambda *args, **kwargs: "slice"
+        client.transport = Generic()
+        client.transport.close = lambda: None
+        self.client._connect = lambda server: True
+        self.client._get_server = lambda: client
+        self.assert_(getter() is "slice")
+
+        def raises(exception_class):
+            def raise_(*args, **kwargs):
+                raise exception_class(*args, **kwargs)
+            return raise_
+
+        client.get_slice = lambda *args, **kwargs: raises(Exception)()
+        getter = self.client.__getattr__('get_slice')
+        self.assertRaises(Exception, getter)
+
+        client.get_slice = lambda *args, **kwargs: raises(Thrift.TException)()
+        getter = self.client.__getattr__('get_slice')
+        self.assertRaises(ErrorThriftMessage, getter)
+
+        client.get_slice = lambda *args, **kwargs: \
+            raises(Thrift.TException)(message="Test 123")
+        getter = self.client.__getattr__('get_slice')
+        self.assertRaises(ErrorThriftMessage, getter)
 
 
 if __name__ == '__main__':
