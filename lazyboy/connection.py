@@ -104,8 +104,8 @@ class Client(object):
                         message = "Transport error, reconnect"
                     client.transport.close()
                     raise ErrorThriftMessage(message)
-                except Exception, e:
+                except Exception:
                     client.transport.close()
-                    raise e
+                    raise
 
         return func
