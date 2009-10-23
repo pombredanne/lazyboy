@@ -12,3 +12,4 @@ debian/files
 debian/python-lazyboy*
 debian/stamp-*
 python-build-stamp*
+README.html
