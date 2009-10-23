@@ -8,7 +8,8 @@
 
 from lazyboy.connection import get_pool
 
-from cassandra.ttypes import SlicePredicate, SliceRange, ConsistencyLevel
+from cassandra.ttypes import SlicePredicate, SliceRange, ConsistencyLevel, \
+    ColumnOrSuperColumn, Column, SuperColumn
 
 
 def slice_iterator(key, **range_args):
@@ -24,7 +25,7 @@ def slice_iterator(key, **range_args):
         SlicePredicate(slice_range=SliceRange(**kwargs)),
         ConsistencyLevel.ONE)
 
-    return (corsc.column or corsc.super_column for corsc in res)
+    return unpack(res)
 
 
 def sparse_get(key, columns):
@@ -35,7 +36,7 @@ def sparse_get(key, columns):
         key.keyspace, key.key, key, SlicePredicate(column_names=columns),
         ConsistencyLevel.ONE)
 
-    return (corsc.column or corsc.super_column for corsc in res)
+    return unpack(res)
 
 
 def sparse_multiget(keys, columns):
@@ -64,3 +65,15 @@ def key_range(key, start="", finish="", count=100):
 def key_range_iterator(key, start="", finish="", count=100):
     """Return an iterator which produces Key instances for a key range."""
     return (key.clone(key=k) for k in key_range(key, start, finish, count))
+
+
+def pack(objects):
+    """Return a generator which packs objects into ColumnOrSuperColumns."""
+    for object in objects:
+        key = 'column' if isinstance(object, Column) else 'super_column'
+        yield ColumnOrSuperColumn(**{key: object})
+
+
+def unpack(records):
+    """Return a generator which unpacks objects from ColumnOrSuperColumns."""
+    return (corsc.column or corsc.super_column for corsc in records)

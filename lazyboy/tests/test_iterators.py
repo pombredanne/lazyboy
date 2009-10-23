@@ -105,6 +105,23 @@ class SliceIteratorTest(unittest.TestCase):
         finally:
             iterators.key_range = real_key_range
 
+    def test_pack(self):
+        """Test pack."""
+        columns = self.client.get_slice()
+        packed = iterators.pack(columns)
+        self.assert_(isinstance(packed, types.GeneratorType))
+        for obj in packed:
+            self.assert_(isinstance(obj, ttypes.ColumnOrSuperColumn))
+
+    def test_unpack(self):
+        """Test unpack."""
+        columns = self.client.get_slice()
+        unpacked = iterators.unpack(columns)
+        self.assert_(isinstance(unpacked, types.GeneratorType))
+
+        for obj in unpacked:
+            self.assert_(isinstance(obj, ttypes.Column))
+
 
 if __name__ == '__main__':
     unittest.main()
