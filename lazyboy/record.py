@@ -169,7 +169,7 @@ class Record(CassandraBase, dict):
     def _save_internal(self, key, changes):
         """Internal save method."""
 
-        client = self._get_cas()
+        client = self._get_cas(key.keyspace)
         # Delete items
         for path in changes['deleted']:
             client.remove(key.keyspace, key.key, path,
