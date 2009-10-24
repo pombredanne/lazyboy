@@ -161,12 +161,14 @@ class Record(CassandraBase, dict):
         for path in deleted:
             client.remove(self.key.keyspace, self.key.key, path,
                           self.timestamp(), ConsistencyLevel.ONE)
+        self._deleted.clear()
 
         # Update items
         if changed:
             client.batch_insert(*self._get_batch_args(self.key, changed))
+            self._modified.clear()
+        self._original = self._columns.copy()
 
-        self._original = self._columns
         return self
 
     def _get_batch_args(self, key, columns):

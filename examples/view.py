@@ -25,7 +25,7 @@ class AllUsersViewKey(Key):
     """This is a key class which defaults to storage in the UserViews CF
     in the UserData Keyspace."""
     def __init__(self, key=None):
-        Key.__init__(self, "Digg", "UserViews", key)
+        Key.__init__(self, "UserData", "UserViews", key)
 
 
 # You should subclass View to provide defaults for your view.
@@ -35,7 +35,7 @@ class AllUsersView(View):
         # This is the key to the CF holding the view
         self.key = AllUsersViewKey(key='row_a')
         # Records referenced in the view will be instances of this class.
-        self.record_class = UserRecord
+        self.record_class = User
         # This is the key for the record.
         self.record_key = UserKey()
 
@@ -48,8 +48,8 @@ _users = ({'username': 'jsmith', 'email': 'jsmith@example.com'},
           {'username': 'jxdoe', 'email': 'jxdoe@example.com'})
 
 # Add records to the view
-for _user in _usrs:
-    auv.append(UserRecord(_user).save())
+for _user in _users:
+    auv.append(User(_user).save())
 
 # When the view is iterated, the records referenced in it's keys are
 # returned.

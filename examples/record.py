@@ -79,7 +79,9 @@ u.save()           # -> {'username': 'ieure', 'email': 'ian@digg.com'}
 print u.is_modified()           # -> False
 
 # Load it in a new instance.
-u_ = User().load(key)
+#u_ = User().load(key)
+u_ = User().load(u.key.clone())    # PATCH
+
 print u_           # -> {'username': 'ieure', 'email': 'ian@digg.com'}
 
 print u.is_modified()           # -> False
