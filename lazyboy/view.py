@@ -86,6 +86,7 @@ class View(CassandraBase):
         return record.key.key if record else str(uuid.uuid1())
 
     def append(self, record):
+        """Append a record to a view"""
         assert isinstance(record, Record), \
             "Can't append non-record type %s to view %s" % \
             (record.__class__, self.__class__)
@@ -94,7 +95,17 @@ class View(CassandraBase):
             self.key.get_path(column=self._record_key(record)),
             record.key.key, record.timestamp(), ConsistencyLevel.ONE)
 
-
+    def remove(self, record):
+        """Remove a record from a view"""
+        assert isinstance(record, Record), \
+            "Can't remove non-record type %s to view %s" % \
+            (record.__class__, self.__class__)
+        self._get_cas().remove(
+            self.key.keyspace, self.key.key,
+            self.key.get_path(column=self._record_key(record)),
+            record.timestamp(), ConsistencyLevel.ONE)
+                
+                
 class PartitionedView(object):
     """A Lazyboy view which is partitioned across rows."""
     def __init__(self, view_key=None, view_class=None):
