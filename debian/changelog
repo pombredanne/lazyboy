@@ -1,3 +1,11 @@
+python-lazyboy (0.7.3-1) unstable; urgency=low
+
+  * Fixed to examples and record. (Drew Schleck via wgillett).
+  * Allow removing records from views. (rays).
+  * Fix PartitionedView.partition_keys.
+
+ -- Ian Eure <ian@digg.com>  Thu, 29 Oct 2009 10:19:15 -0700
+
 python-lazyboy (0.7.2-1) unstable; urgency=low
 
   * Fix issue with using classes which indirectly extended Record in Views.
