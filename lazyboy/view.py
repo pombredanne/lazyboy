@@ -112,7 +112,7 @@ class PartitionedView(object):
         self.view_key = view_key
         self.view_class = view_class
 
-    def partition_keys():
+    def partition_keys(self):
         """Return a sequence of row keys for the view partitions."""
         return ()
 
