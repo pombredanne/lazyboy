@@ -11,7 +11,7 @@ import hashlib
 import uuid
 
 from cassandra.ttypes import ColumnPath, ColumnParent, \
-    SlicePredicate, SliceRange, ConsistencyLevel
+    SlicePredicate, SliceRange
 
 from lazyboy.key import Key
 from lazyboy.base import CassandraBase
@@ -65,7 +65,7 @@ class View(CassandraBase):
                 self.key.keyspace, self.key.key, self.key,
                 SlicePredicate(slice_range=SliceRange(
                         last_col, end_col, 0, chunk_size + fudge)),
-                ConsistencyLevel.ONE)
+                self.consistency)
 
             if len(cols) == 0:
                 raise StopIteration()
@@ -96,7 +96,7 @@ class View(CassandraBase):
         self._get_cas().insert(
             self.key.keyspace, self.key.key,
             self.key.get_path(column=self._record_key(record)),
-            record.key.key, record.timestamp(), ConsistencyLevel.ONE)
+            record.key.key, record.timestamp(), self.consistency)
 
     def remove(self, record):
         """Remove a record from a view"""

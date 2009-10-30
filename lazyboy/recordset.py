@@ -10,8 +10,7 @@ from UserDict import UserDict
 from itertools import groupby
 from operator import attrgetter
 
-from cassandra.ttypes import ColumnParent, SlicePredicate, SliceRange, \
-    ConsistencyLevel
+from cassandra.ttypes import ColumnParent, SlicePredicate, SliceRange
 
 from lazyboy.key import Key
 from lazyboy.record import Record
@@ -92,7 +91,7 @@ class KeyRecordSet(RecordSet):
                 records = client.multiget_slice(
                     keyspace, map(attrgetter('key'), by_cf), ColumnParent(cf),
                     SlicePredicate(slice_range=SliceRange("", "", 0, 9999)),
-                    ConsistencyLevel.ONE)
+                    self.consistency)
 
                 for (r_key, r_cols) in records.iteritems():
                     yield record_class()._inject(

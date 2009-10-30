@@ -129,15 +129,16 @@ class Record(CassandraBase, dict):
                 'changed': tuple(self._columns[key]
                                  for key in self._modified.keys())}
 
-    def load(self, key):
+    def load(self, key, consistency=None):
         """Load this record from primary key"""
         assert isinstance(key, Key), "Bad key passed to load()"
         self._clean()
+        consistency = consistency or self.consistency
 
         _slice = self._get_cas(key.keyspace).get_slice(
             key.keyspace, key.key, key,
             SlicePredicate(slice_range=SliceRange(start="", finish="")),
-            ConsistencyLevel.ONE)
+            consistency)
 
         if not _slice:
             raise ErrorNoSuchRecord("No record matching key %s" % key)
@@ -146,7 +147,7 @@ class Record(CassandraBase, dict):
                      dict([(obj.column.name, obj.column) for obj in _slice]))
         return self
 
-    def save(self):
+    def save(self, consistency=None):
         """Save the record, returns self."""
         if not self.valid():
             raise ErrorMissingField("Missing required field(s):",
@@ -159,21 +160,22 @@ class Record(CassandraBase, dict):
 
         # Marshal and save changes
         changes = self._marshal()
-        self._save_internal(self.key, changes)
+        self._save_internal(self.key, changes, consistency)
 
         if changes['changed']:
             self._modified.clear()
         self._original = self._columns.copy()
         return self
 
-    def _save_internal(self, key, changes):
+    def _save_internal(self, key, changes, consistency=None):
         """Internal save method."""
 
+        consistency = consistency or self.consistency
         client = self._get_cas(key.keyspace)
         # Delete items
         for path in changes['deleted']:
             client.remove(key.keyspace, key.key, path,
-                          self.timestamp(), ConsistencyLevel.ONE)
+                          self.timestamp(), consistency)
         self._deleted.clear()
 
         # Update items
@@ -191,13 +193,14 @@ class Record(CassandraBase, dict):
             cols = [ColumnOrSuperColumn(super_column=scol)]
 
         return (key.keyspace, key.key, {key.column_family: cols},
-                ConsistencyLevel.ONE)
+                consistency)
 
-    def remove(self):
+    def remove(self, consistency=None):
         """Remove this record from Cassandra."""
+        consistency = consistency or self.consistency
         self._get_cas().remove(self.key.keyspace, self.key.key,
                                self.key.get_path(), self.timestamp(),
-                               ConsistencyLevel.ONE)
+                               consistency)
 
     def revert(self):
         """Revert changes, restoring to the state we were in when loaded."""

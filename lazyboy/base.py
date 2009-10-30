@@ -6,6 +6,8 @@
 # Author: Ian Eure <ian@digg.com>
 #
 
+from cassandra.ttypes import ConsistencyLevel
+
 from lazyboy.exceptions import ErrorUnknownKeyspace, ErrorIncompleteKey
 import lazyboy.connection as connection
 
@@ -16,6 +18,7 @@ class CassandraBase(object):
 
     def __init__(self):
         self._clients = {}
+        self.consistency = ConsistencyLevel.ONE
 
     def _get_cas(self, keyspace=None):
         """Return the cassandra client."""
