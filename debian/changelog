@@ -1,3 +1,10 @@
+python-lazyboy (0.7.4dev7-1) unstable; urgency=low
+
+  * Improve ConsistencyLevel handling.
+  * Fix _save_internal so it doesn't depend on the record's key.
+
+ -- Ian Eure <ian@digg.com>  Fri, 30 Oct 2009 15:33:02 -0700
+
 python-lazyboy (0.7.3-1) unstable; urgency=low
 
   * Fixed to examples and record. (Drew Schleck via wgillett).
