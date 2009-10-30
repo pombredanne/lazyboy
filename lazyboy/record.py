@@ -181,10 +181,11 @@ class Record(CassandraBase, dict):
         # Update items
         if changes['changed']:
             client.batch_insert(*self._get_batch_args(
-                    key, changes['changed']))
+                    key, changes['changed'], consistency))
 
-    def _get_batch_args(self, key, columns):
+    def _get_batch_args(self, key, columns, consistency=None):
         """Return a BatchMutation for the given key and columns."""
+        consistency = consistency or self.consistency
         if not key.is_super():
             cols = [ColumnOrSuperColumn(column=col) for col in columns]
         else:
