@@ -12,18 +12,20 @@ from cassandra.ttypes import SlicePredicate, SliceRange, ConsistencyLevel, \
     ColumnOrSuperColumn, Column, SuperColumn
 
 
-def slice_iterator(key, **range_args):
+def slice_iterator(key, consistency, **range_args):
     """Return an iterator over a row."""
 
     kwargs = {'start': "", 'finish': "",
               'count': 100000, 'reversed': 0}
     kwargs.update(range_args)
 
+    consistency = consistency or ConsistencyLevel.ONE
+
     client = get_pool(key.keyspace)
     res = client.get_slice(
         key.keyspace, key.key, key,
         SlicePredicate(slice_range=SliceRange(**kwargs)),
-        ConsistencyLevel.ONE)
+        consistency)
 
     return unpack(res)
 

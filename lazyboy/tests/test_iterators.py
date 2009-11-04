@@ -14,6 +14,8 @@ import lazyboy.iterators as iterators
 import cassandra.ttypes as ttypes
 from test_record import MockClient
 
+from cassandra.ttypes import ConsistencyLevel
+
 
 class SliceIteratorTest(unittest.TestCase):
 
@@ -32,7 +34,7 @@ class SliceIteratorTest(unittest.TestCase):
     def test_slice_iterator(self):
         """Test slice_iterator."""
         key = Key(keyspace="eggs", column_family="bacon", key="tomato")
-        slice_iterator = iterators.slice_iterator(key)
+        slice_iterator = iterators.slice_iterator(key, ConsistencyLevel.ONE)
         self.assert_(isinstance(slice_iterator, types.GeneratorType))
         for col in slice_iterator:
             self.assert_(isinstance(col, ttypes.Column))
@@ -48,7 +50,7 @@ class SliceIteratorTest(unittest.TestCase):
 
         self.client.get_slice = lambda *args: [corsc]
 
-        slice_iterator = iterators.slice_iterator(key)
+        slice_iterator = iterators.slice_iterator(key, ConsistencyLevel.ONE)
         self.assert_(isinstance(slice_iterator, types.GeneratorType))
         for col in slice_iterator:
             self.assert_(isinstance(col, ttypes.SuperColumn))
