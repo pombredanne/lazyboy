@@ -176,45 +176,48 @@ class RecordTest(CassandraBaseTest):
             self.assert_(self.object._columns[col.name] == col)
 
     def test_get_batch_args(self):
+        columns = (Column(name="eggs", value="1"),
+                   Column(name="bacon", value="2"),
+                   Column(name="sausage", value="3"))
+        column_names = [col.name for col in columns]
+
         data = {'eggs': "1", 'bacon': "2", 'sausage': "3"}
         key = Key(keyspace='eggs', column_family='bacon', key='tomato')
-        self.object.update(data)
-        self.object.key = key
 
-        args = self.object._get_batch_args(
-            self.object.key, self.object._columns)
+        args = self.object._get_batch_args(key, columns)
+
+        # Make sure the key is correct
         self.assert_(args[0] is key.keyspace)
         self.assert_(args[1] is key.key)
         self.assert_(isinstance(args[2], dict))
         keys = args[2].keys()
         self.assert_(len(keys) == 1)
         self.assert_(keys[0] == key.column_family)
-        self.assert_(isinstance(args[2][key.column_family], list))
+        self.assert_(hasattr(args[2][key.column_family], '__iter__'))
         for val in args[2][key.column_family]:
             self.assert_(isinstance(val, ColumnOrSuperColumn))
-            self.assert_(val.column in data.keys())
+            self.assert_(val.column in columns)
             self.assert_(val.super_column is None)
 
         key.super_column = "spam"
-        args = self.object._get_batch_args(
-            self.object.key, self.object._columns)
-        # print args
+        args = self.object._get_batch_args(key, columns)
         self.assert_(args[0] is key.keyspace)
         self.assert_(args[1] is key.key)
         self.assert_(isinstance(args[2], dict))
+
         keys = args[2].keys()
         self.assert_(len(keys) == 1)
         self.assert_(keys[0] == key.column_family)
-        self.assert_(isinstance(args[2][key.column_family], list))
+        self.assert_(hasattr(args[2][key.column_family], '__iter__'))
         for val in args[2][key.column_family]:
             self.assert_(isinstance(val, ColumnOrSuperColumn))
             self.assert_(val.column is None)
             self.assert_(isinstance(val.super_column, SuperColumn))
             self.assert_(val.super_column.name is key.super_column)
-            self.assert_(isinstance(val.super_column.columns, dict))
-            for (name, col) in val.super_column.columns.items():
-                self.assert_(name in data.keys())
-                self.assert_(col.value == data[name])
+            self.assert_(hasattr(val.super_column.columns, '__iter__'))
+            for col in val.super_column.columns:
+                self.assert_(col.name in data.keys())
+                self.assert_(col.value == data[col.name])
 
     def test_save(self):
         self.assertRaises(ErrorMissingField, self.object.save)

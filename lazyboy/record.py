@@ -8,11 +8,12 @@
 import time
 from itertools import ifilterfalse as filternot
 
-from cassandra.ttypes import Column, SuperColumn, ColumnOrSuperColumn, \
-    SlicePredicate, SliceRange, ConsistencyLevel
+from cassandra.ttypes import Column, SuperColumn, SlicePredicate, \
+    SliceRange, ConsistencyLevel
 
 from lazyboy.base import CassandraBase
 from lazyboy.key import Key
+import lazyboy.iterators as iterators
 from lazyboy.exceptions import ErrorMissingField, ErrorNoSuchRecord, \
     ErrorMissingKey, ErrorInvalidValue
 
@@ -135,16 +136,12 @@ class Record(CassandraBase, dict):
         self._clean()
         consistency = consistency or self.consistency
 
-        _slice = self._get_cas(key.keyspace).get_slice(
-            key.keyspace, key.key, key,
-            SlicePredicate(slice_range=SliceRange(start="", finish="")),
-            consistency)
+        columns = iterators.slice_iterator(key, consistency)
 
-        if not _slice:
+        if not columns:
             raise ErrorNoSuchRecord("No record matching key %s" % key)
 
-        self._inject(key,
-                     dict([(obj.column.name, obj.column) for obj in _slice]))
+        self._inject(key, dict([(column.name, column) for column in columns]))
         return self
 
     def save(self, consistency=None):
@@ -186,15 +183,12 @@ class Record(CassandraBase, dict):
     def _get_batch_args(self, key, columns, consistency=None):
         """Return a BatchMutation for the given key and columns."""
         consistency = consistency or self.consistency
-        if not key.is_super():
-            cols = [ColumnOrSuperColumn(column=col) for col in columns]
-        else:
-            scol = SuperColumn(name=key.super_column,
-                               columns=columns)
-            cols = [ColumnOrSuperColumn(super_column=scol)]
 
-        return (key.keyspace, key.key, {key.column_family: cols},
-                consistency)
+        if key.is_super():
+            columns = [SuperColumn(name=key.super_column, columns=columns)]
+
+        return (key.keyspace, key.key,
+                {key.column_family: iterators.pack(columns)}, consistency)
 
     def remove(self, consistency=None):
         """Remove this record from Cassandra."""
