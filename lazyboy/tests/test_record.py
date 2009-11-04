@@ -14,11 +14,13 @@ import unittest
 from cassandra.ttypes import Column, SuperColumn, ColumnOrSuperColumn, \
     ColumnParent
 
+import lazyboy.record
 from lazyboy.connection import Client
 from lazyboy.key import Key
-from lazyboy.record import Record
 from lazyboy.exceptions import ErrorMissingField, ErrorMissingKey, \
     ErrorInvalidValue
+
+Record = lazyboy.record.Record
 
 from test_base import CassandraBaseTest
 
@@ -164,11 +166,20 @@ class RecordTest(CassandraBaseTest):
         return mock
 
     def test_load(self):
-        self.object._get_cas = self.get_mock_cassandra
-        key = Key(keyspace='eggs', column_family='bacon', key='tomato')
-        self.object.load(key)
+        test_data = (Column(name="eggs", value="1"),
+                     Column(name="bacon", value="2"),
+                     Column(name="spam", value="3"))
+
+        real_slice = lazyboy.record.iterators.slice_iterator
+        try:
+            lazyboy.record.iterators.slice_iterator = lambda *args: test_data
+            key = Key(keyspace='eggs', column_family='bacon', key='tomato')
+            self.object.load(key)
+        finally:
+            lazyboy.record.iterators.slice_iterator = real_slice
+
         self.assert_(self.object.key is key)
-        cols = dict([[obj.column.name, obj.column] for obj in _last_cols])
+        cols = dict([[column.name, column] for column in test_data])
         self.assert_(self.object._original == cols)
 
         for col in cols.values():
