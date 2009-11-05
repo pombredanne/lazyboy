@@ -10,6 +10,7 @@ import unittest
 import types
 
 from lazyboy.key import Key
+import lazyboy.exceptions as exc
 import lazyboy.iterators as iterators
 import cassandra.ttypes as ttypes
 from test_record import MockClient
@@ -33,11 +34,29 @@ class SliceIteratorTest(unittest.TestCase):
 
     def test_slice_iterator(self):
         """Test slice_iterator."""
+
         key = Key(keyspace="eggs", column_family="bacon", key="tomato")
         slice_iterator = iterators.slice_iterator(key, ConsistencyLevel.ONE)
         self.assert_(isinstance(slice_iterator, types.GeneratorType))
         for col in slice_iterator:
             self.assert_(isinstance(col, ttypes.Column))
+
+    def test_slice_iterator_error(self):
+
+        class Client(object):
+
+            def get_slice(*args, **kwargs):
+                return None
+
+        key = Key(keyspace="eggs", column_family="bacon", key="tomato")
+        real_get_pool = iterators.get_pool
+        try:
+            iterators.get_pool = lambda pool: Client()
+            self.assertRaises(exc.ErrorNoSuchRecord,
+                              iterators.slice_iterator,
+                              key, ConsistencyLevel.ONE)
+        finally:
+            iterators.get_pool = real_get_pool
 
     def test_slice_iterator_supercolumns(self):
         """Test slice_iterator with supercolumns."""

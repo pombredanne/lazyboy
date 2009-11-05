@@ -7,6 +7,7 @@
 """Iterator-based Cassandra tools."""
 
 from lazyboy.connection import get_pool
+import lazyboy.exceptions as exc
 
 from cassandra.ttypes import SlicePredicate, SliceRange, ConsistencyLevel, \
     ColumnOrSuperColumn, Column, SuperColumn
@@ -26,6 +27,9 @@ def slice_iterator(key, consistency, **range_args):
         key.keyspace, key.key, key,
         SlicePredicate(slice_range=SliceRange(**kwargs)),
         consistency)
+
+    if not res:
+        raise exc.ErrorNoSuchRecord("No record matching key %s" % key)
 
     return unpack(res)
 

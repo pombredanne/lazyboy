@@ -173,9 +173,6 @@ class Record(CassandraBase, dict):
 
         columns = iterators.slice_iterator(key, consistency)
 
-        if not columns:
-            raise ErrorNoSuchRecord("No record matching key %s" % key)
-
         self._inject(key, dict([(column.name, column) for column in columns]))
         return self
 
