@@ -9,6 +9,7 @@ import time
 import math
 import uuid
 import random
+import types
 import unittest
 
 from cassandra.ttypes import Column, SuperColumn, ColumnOrSuperColumn, \
@@ -232,7 +233,8 @@ class RecordTest(CassandraBaseTest):
         keys = args[2].keys()
         self.assert_(len(keys) == 1)
         self.assert_(keys[0] == key.column_family)
-        self.assert_(hasattr(args[2][key.column_family], '__iter__'))
+        self.assert_(not isinstance(args[2][key.column_family],
+                                    types.GeneratorType))
         for val in args[2][key.column_family]:
             self.assert_(isinstance(val, ColumnOrSuperColumn))
             self.assert_(val.column in columns)
@@ -247,7 +249,8 @@ class RecordTest(CassandraBaseTest):
         keys = args[2].keys()
         self.assert_(len(keys) == 1)
         self.assert_(keys[0] == key.column_family)
-        self.assert_(hasattr(args[2][key.column_family], '__iter__'))
+        self.assert_(not isinstance(args[2][key.column_family],
+                                    types.GeneratorType))
         for val in args[2][key.column_family]:
             self.assert_(isinstance(val, ColumnOrSuperColumn))
             self.assert_(val.column is None)

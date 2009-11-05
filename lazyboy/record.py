@@ -233,7 +233,8 @@ class Record(CassandraBase, dict):
             columns = [SuperColumn(name=key.super_column, columns=columns)]
 
         return (key.keyspace, key.key,
-                {key.column_family: iterators.pack(columns)}, consistency)
+                {key.column_family: tuple(iterators.pack(columns))},
+                consistency)
 
     def remove(self, consistency=None):
         """Remove this record from Cassandra."""
