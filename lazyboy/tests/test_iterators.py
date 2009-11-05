@@ -8,6 +8,7 @@
 
 import unittest
 import types
+from pprint import pprint
 
 from lazyboy.key import Key
 import lazyboy.exceptions as exc
@@ -15,7 +16,7 @@ import lazyboy.iterators as iterators
 import cassandra.ttypes as ttypes
 from test_record import MockClient
 
-from cassandra.ttypes import ConsistencyLevel
+from cassandra.ttypes import ConsistencyLevel, Column, SuperColumn
 
 
 class SliceIteratorTest(unittest.TestCase):
@@ -73,6 +74,54 @@ class SliceIteratorTest(unittest.TestCase):
         self.assert_(isinstance(slice_iterator, types.GeneratorType))
         for col in slice_iterator:
             self.assert_(isinstance(col, ttypes.SuperColumn))
+
+    def test_multigetterator(self):
+        """Test multigetterator."""
+        keys = [Key("eggs", "bacon", "cleese"),
+                Key("eggs", "bacon", "gilliam"),
+                Key("eggs", "spam", "jones"),
+                Key("eggs", "spam", "idle"),
+                Key("tomato", "sausage", "chapman"),
+                Key("tomato", "sausage", "palin")]
+
+        def pack(cols):
+            return list(iterators.pack(cols))
+
+        data = {'eggs': # Keyspace
+                {'bacon': # Column Family
+                 {'cleese': pack([Column(name="john", value="cleese")]),
+                  'gilliam': pack([Column(name="terry", value="gilliam")])},
+                 'spam': # Column Family
+                     {'jones': pack([Column(name="terry", value="jones")]),
+                      'idle': pack([Column(name="eric", value="idle")])}},
+                'tomato': # Keyspace
+                {'sausage': # Column Family
+                 {'chapman':
+                      pack([SuperColumn(name="chap_scol", columns=[])]),
+                  'palin':
+                      pack([SuperColumn(name="pal_scol", columns=[])])}}}
+
+        def multiget_slice(keyspace, keys, column_parent, predicate,
+                           consistencylevel):
+            return data[keyspace][column_parent.column_family]
+        self.client.multiget_slice = multiget_slice
+
+        res = iterators.multigetterator(keys, ConsistencyLevel.ONE)
+        self.assert_(isinstance(res, dict))
+        for (keyspace, col_fams) in res.iteritems():
+            self.assert_(keyspace in res)
+            self.assert_(isinstance(col_fams, dict))
+            for (col_fam, rows) in col_fams.iteritems():
+                self.assert_(col_fam in data[keyspace])
+                self.assert_(isinstance(rows, dict))
+                for (row_key, columns) in rows.iteritems():
+                    self.assert_(row_key in data[keyspace][col_fam])
+                    for column in columns:
+                        if keyspace == 'tomato':
+                            self.assert_(isinstance(column, SuperColumn))
+                        else:
+                            self.assert_(isinstance(column, Column))
+
 
     def test_sparse_get(self):
         """Test sparse_get."""
