@@ -14,14 +14,27 @@ from cassandra.ttypes import Column, SuperColumn, SlicePredicate, \
 from lazyboy.base import CassandraBase
 from lazyboy.key import Key
 import lazyboy.iterators as iterators
-from lazyboy.exceptions import ErrorMissingField, ErrorNoSuchRecord, \
-    ErrorMissingKey, ErrorInvalidValue
+import lazyboy.exceptions as exc
 
 
 class Record(CassandraBase, dict):
+
     """An object backed by a record in Cassandra."""
+
     # A tuple of items which must be present for the object to be valid
     _required = ()
+
+    # The keyspace this record should be saved in
+    _keyspace = None
+
+    # The column family this record should be saved in
+    _column_family = None
+
+    # Indexes which this record should be added to on save
+    _indexes = []
+
+    # Denormalized copies of this record
+    _mirrors = []
 
     def __init__(self, *args, **kwargs):
         dict.__init__(self)
@@ -31,6 +44,28 @@ class Record(CassandraBase, dict):
 
         if args or kwargs:
             self.update(*args, **kwargs)
+
+    def default_key(self):
+        """Return a default key for this record."""
+        raise exc.ErrorMissingKey("There is no key set for this record.")
+
+    def set_key(self, key, super_column=None):
+        """Set the key for this record."""
+        key_args = {'keyspace': self._keyspace,
+                    'column_family': self._column_family}
+        key_args.update(key=key, super_column=super_column)
+        self.key = Key(**key_args)
+        return self
+
+    def get_indexes(self):
+        """Return indexes this record should be stored in."""
+        return [index() if isinstance(index, type) else index
+                for index in self._indexes]
+
+    def get_mirrors(self):
+        """Return mirrors this record should be stored in."""
+        return [mirror if isinstance(mirror, type) else mirror
+                for mirror in self._mirrors]
 
     def valid(self):
         """Return a boolean indicating whether the record is valid."""
@@ -83,7 +118,7 @@ class Record(CassandraBase, dict):
     def __setitem__(self, item, value):
         """Set an item, storing it into the _columns backing store."""
         if value is None:
-            raise ErrorInvalidValue("You may not set an item to None.")
+            raise exc.ErrorInvalidValue("You may not set an item to None.")
 
         value = self.sanitize(value)
 
@@ -147,11 +182,11 @@ class Record(CassandraBase, dict):
     def save(self, consistency=None):
         """Save the record, returns self."""
         if not self.valid():
-            raise ErrorMissingField("Missing required field(s):",
-                                    self.missing())
+            raise exc.ErrorMissingField("Missing required field(s):",
+                                        self.missing())
 
         if not hasattr(self, 'key') or not self.key:
-            raise ErrorMissingKey("No key has been set.")
+            self.key = self.default_key()
 
         assert isinstance(self.key, Key), "Bad record key in save()"
 
@@ -159,9 +194,22 @@ class Record(CassandraBase, dict):
         changes = self._marshal()
         self._save_internal(self.key, changes, consistency)
 
-        if changes['changed']:
-            self._modified.clear()
-        self._original = self._columns.copy()
+        try:
+            try:
+                # Save mirrors
+                for mirror in self.get_mirrors():
+                    self._save_internal(mirror.mirror_key(self), changes,
+                                        consistency)
+            finally:
+                # Update indexes
+                for index in self.get_indexes():
+                    index.append(self)
+        finally:
+            # Clean up internal state
+            if changes['changed']:
+                self._modified.clear()
+            self._original = self._columns.copy()
+
         return self
 
     def _save_internal(self, key, changes, consistency=None):
@@ -204,3 +252,17 @@ class Record(CassandraBase, dict):
             self._columns[col.name] = col
 
         self._modified, self._deleted = {}, {}
+
+
+class MirroredRecord(Record):
+
+    """A mirrored (denormalized) record."""
+
+    def mirror_key(self, parent_record):
+        """Return the key this mirror should be saved into."""
+        assert isinstance(parent_record, Record)
+        raise exc.ErrorMissingKey("Please implement a mirror_key method.")
+
+    def save(self):
+        """Refuse to save this record."""
+        raise exc.ErrorImmutable("Mirrored records are immutable.")

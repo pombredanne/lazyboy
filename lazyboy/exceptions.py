@@ -53,3 +53,7 @@ class ErrorThriftMessage(LazyboyException):
 
 class ErrorCassandraNoServersConfigured(LazyboyException):
     pass
+
+
+class ErrorImmutable(LazyboyException):
+    pass

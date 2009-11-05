@@ -15,12 +15,13 @@ from cassandra.ttypes import Column, SuperColumn, ColumnOrSuperColumn, \
     ColumnParent
 
 import lazyboy.record
+from lazyboy.view import View
 from lazyboy.connection import Client
 from lazyboy.key import Key
-from lazyboy.exceptions import ErrorMissingField, ErrorMissingKey, \
-    ErrorInvalidValue
+import lazyboy.exceptions as exc
 
 Record = lazyboy.record.Record
+MirroredRecord = lazyboy.record.MirroredRecord
 
 from test_base import CassandraBaseTest
 
@@ -64,6 +65,24 @@ class RecordTest(CassandraBaseTest):
         self.object = self._get_object({'id': 'eggs', 'title': 'bacon'})
         self.assert_(self.object['id'] == 'eggs')
         self.assert_(self.object['title'] == 'bacon')
+
+    def test_default_key(self):
+        self.assertRaises(exc.ErrorMissingKey, self.object.default_key)
+
+    def test_set_key(self):
+        self.object._keyspace = "spam"
+        self.object._column_family = "bacon"
+        self.object.set_key("eggs", "tomato")
+        self.assert_(hasattr(self.object, 'key'))
+        self.assert_(isinstance(self.object.key, Key))
+        self.assert_(self.object.key.keyspace == "spam")
+        self.assert_(self.object.key.column_family == "bacon")
+        self.assert_(self.object.key.key == "eggs")
+        self.assert_(self.object.key.super_column == "tomato")
+
+    def test_get_indexes(self):
+        self.object._indexes = ({}, {})
+        self.assert_(tuple(self.object.get_indexes()) == ({}, {}))
 
     def test_valid(self):
         self.assert_(not self.object.valid())
@@ -111,7 +130,7 @@ class RecordTest(CassandraBaseTest):
 
     def test_setitem_getitem(self):
         data = {'id': 'eggs', 'title': 'bacon'}
-        self.assertRaises(ErrorInvalidValue, self.object.__setitem__,
+        self.assertRaises(exc.ErrorInvalidValue, self.object.__setitem__,
                           "eggs", None)
         for k in data:
             self.object[k] = data[k]
@@ -138,6 +157,15 @@ class RecordTest(CassandraBaseTest):
             del self.object[k]
             self.object[k] = data[k]
             self.assert_(k not in self.object._deleted)
+
+        # Make sure setting an identical original value doesn't change
+        self.object._inject(
+            self.object.key,
+            {"eggs": Column(name="eggs", value="bacon", timestamp=0)})
+        self.assert_(self.object["eggs"] == "bacon")
+        self.assert_(self.object._original["eggs"].timestamp == 0)
+        self.object["eggs"] = "bacon"
+        self.assert_(self.object._original["eggs"].timestamp == 0)
 
     def test_delitem(self):
         data = {'id': 'eggs', 'title': 'bacon'}
@@ -230,12 +258,15 @@ class RecordTest(CassandraBaseTest):
                 self.assert_(col.name in data.keys())
                 self.assert_(col.value == data[col.name])
 
+    def test_remove(self):
+        pass
+
     def test_save(self):
-        self.assertRaises(ErrorMissingField, self.object.save)
+        self.assertRaises(exc.ErrorMissingField, self.object.save)
         data = {'eggs': "1", 'bacon': "2", 'sausage': "3"}
         self.object.update(data)
 
-        self.assertRaises(ErrorMissingKey, self.object.save)
+        self.assertRaises(exc.ErrorMissingKey, self.object.save)
 
         key = Key(keyspace='eggs', column_family='bacon', key='tomato')
         self.object.key = key
@@ -272,6 +303,113 @@ class RecordTest(CassandraBaseTest):
             self.assert_(col == self.object._columns[col.name],
                          "Column from cf._columns wasn't used in mutation_t")
 
+    def test_save_index(self):
+
+        class FakeView(object):
+
+            def __init__(self):
+                self.records = []
+
+            def append(self, record):
+                self.records.append(record)
+
+        views = [FakeView(), FakeView()]
+        saves = []
+        self.object.get_indexes = lambda: views
+        self.object._save_internal = lambda *args: saves.append(True)
+
+        data = {'eggs': "1", 'bacon': "2", 'sausage': "3"}
+        self.object.update(data)
+        self.object._keyspace = "cleese"
+        self.object._column_family = "gilliam"
+        self.object.set_key("blah")
+        self.object.save()
+        for view in views:
+            self.assert_(self.object in view.records)
+
+    def test_save_mirror(self):
+
+        class FakeMirror(object):
+
+            def __init__(self):
+                self.records = []
+
+            def mirror_key(self, parent_record):
+                self.records.append(parent_record)
+                return parent_record.key.clone(column_family="mirror")
+
+        mirrors = [FakeMirror(), FakeMirror()]
+        saves = []
+        self.object.get_mirrors = lambda: mirrors
+        self.object._save_internal = lambda *args: saves.append(True)
+
+        data = {'eggs': "1", 'bacon': "2", 'sausage': "3"}
+        self.object.update(data)
+        self.object._keyspace = "cleese"
+        self.object._column_family = "gilliam"
+        self.object.set_key("blah")
+        self.object.save()
+        for mirror in mirrors:
+            self.assert_(self.object in mirror.records)
+
+    def test_save_mirror_failure(self):
+        data = {'eggs': "1", 'bacon': "2", 'sausage': "3"}
+        saves = []
+        self.object._save_internal = lambda *args: saves.append(True)
+        self.object._keyspace = "cleese"
+        self.object._column_family = "gilliam"
+        self.object.set_key("blah")
+
+        class BrokenMirror(object):
+
+            def mirror_key(self, parent_record):
+                raise Exception("Testing")
+
+        class BrokenView(object):
+
+            def mirror_key(self, parent_record):
+                raise Exception("Testing")
+
+        class FakeView(object):
+
+            def __init__(self):
+                self.records = []
+
+            def append(self, record):
+                self.records.append(record)
+
+        # Make sure a broken mirror doesn't break the record or views.
+        mirrors = [BrokenMirror(), BrokenMirror()]
+        self.object.get_mirrors = lambda: mirrors
+
+        self.assert_(not self.object.is_modified())
+        self.object.update(data)
+        self.assert_(self.object.is_modified())
+
+        views = [FakeView()]
+        self.object.get_indexes = lambda: views
+        self.assertRaises(Exception, self.object.save)
+        for view in views:
+            self.assert_(self.object in view.records)
+
+        self.assertRaises(Exception, self.object.save)
+
+        not self.assert_(not self.object.is_modified())
+
+        self.object.update(data)
+        views = [FakeView()]
+        self.object.get_indexes = lambda: views
+        self.assertRaises(Exception, self.object.save)
+        self.assert_(not self.object.is_modified())
+        for view in views:
+            self.assert_(self.object in view.records)
+
+        views = [BrokenView()]
+        self.object.get_indexes = lambda: views
+        self.object.update(data)
+        self.assertRaises(Exception, self.object.save)
+        self.assert_(not self.object.is_modified())
+
     def test_revert(self):
         data = {'id': 'eggs', 'title': 'bacon'}
         for k in data:
@@ -293,29 +431,19 @@ class RecordTest(CassandraBaseTest):
                      "Altered instance is not modified.")
 
 
-# class ImmutableRecordTest(RecordTest):
-#     class ImmutableRecord(ImmutableRecord, RecordTest.class_):
-#         _immutable = {'foo': 'xyz'}
+class MirroredRecordTest(unittest.TestCase):
 
-#     def __init__(self, *args, **kwargs):
-#         self.class_ = self.ImmutableRecord
-#         super(RecordTest, self).__init__(*args, **kwargs)
+    """Tests for MirroredRecord"""
 
-#     def test_immutability(self):
-#         try:
-#             self.object['foo'] = 'bar'
-#             self.fail("ErrorInvalidField not raised")
-#         except ErrorInvalidField:
-#             pass
+    def setUp(self):
+        self.object = MirroredRecord()
 
-#         try:
-#             del self.object['foo']
-#             self.fail("ErrorInvalidField not raised")
-#         except ErrorInvalidField:
-#             pass
+    def test_mirror_key(self):
+        self.assertRaises(exc.ErrorMissingKey, self.object.mirror_key,
+                          self.object)
 
-#         self.assertRaises(ErrorInvalidField, self.object.update,
-#                           {'foo': 'bar'})
+    def test_save(self):
+        self.assertRaises(exc.ErrorImmutable, self.object.save)
 
 
 if __name__ == '__main__':
