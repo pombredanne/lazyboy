@@ -151,8 +151,8 @@ class Record(CassandraBase, dict):
     def _inject(self, key, columns):
         """Inject columns into the record after they have been fetched.."""
         self.key = key
-        if isinstance(columns, list):
-            columns = dict((col.name, col) for col in columns)
+        if not isinstance(columns, dict):
+            columns = dict((col.name, col) for col in iter(columns))
 
         self._original = columns
         self.revert()
