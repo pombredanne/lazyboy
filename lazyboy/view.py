@@ -118,6 +118,8 @@ class FaultTolerantView(View):
         for key in self._keys():
             try:
                 yield self.record_class().load(key)
+            except GeneratorExit:
+                raise
             except Exception, e:
                 pass
 
