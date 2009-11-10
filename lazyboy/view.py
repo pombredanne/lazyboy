@@ -16,6 +16,7 @@ from cassandra.ttypes import ColumnPath, ColumnParent, \
 from lazyboy.key import Key
 from lazyboy.base import CassandraBase
 from lazyboy.record import Record
+from lazyboy.recordset import KeyRecordSet
 from lazyboy.connection import Client
 
 
