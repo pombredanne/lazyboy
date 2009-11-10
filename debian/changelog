@@ -1,3 +1,27 @@
+python-lazyboy (0.7.4dev22-1) unstable; urgency=low
+
+  * Lots of changes.
+
+ -- Ian Eure <ian@digg.com>  Wed, 18 Nov 2009 17:58:16 -0800
+
+python-lazyboy (0.7.4dev21-1) unstable; urgency=low
+
+  * Fix some view issues.
+
+ -- Ian Eure <ian@digg.com>  Thu, 12 Nov 2009 13:48:18 -0800
+
+python-lazyboy (0.7.4dev20-1) unstable; urgency=low
+
+  * New version.
+
+ -- Ian Eure <ian@digg.com>  Wed, 11 Nov 2009 09:59:45 -0800
+
+python-lazyboy (0.7.4dev15-1) unstable; urgency=low
+
+  * Stuff.
+
+ -- Ian Eure <ian@digg.com>  Tue, 10 Nov 2009 14:21:37 -0800
+
 python-lazyboy (0.7.4dev11-1) unstable; urgency=low
 
   * A bunch of stuff.
