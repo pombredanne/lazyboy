@@ -107,8 +107,35 @@ class View(CassandraBase):
             self.key.keyspace, self.key.key,
             self.key.get_path(column=self._record_key(record)),
             record.timestamp(), ConsistencyLevel.ONE)
-                
-                
+
+
+class FaultTolerantView(View):
+
+    """A view which ignores missing keys."""
+
+    def __iter__(self):
+        """Iterate over all objects in this view, ignoring bad keys."""
+        for key in self._keys():
+            try:
+                yield self.record_class().load(key)
+            except Exception, e:
+                pass
+
+
+class BatchLoadingView(View):
+
+    """A view which loads records in bulk."""
+
+    def __init__(self, view_key=None, record_key=None, record_class=None):
+        """Initialize the view, setting the chunk_size to a large value."""
+        lzb.View.__init__(self, view_key, record_key, record_class)
+        self.chunk_size = 5000
+
+    def __iter__(self):
+        """Batch load and iterate over all objects in this view."""
+        return KeyRecordSet(self._keys(), self.record_class).itervalues()
+
+
 class PartitionedView(object):
 
     """A Lazyboy view which is partitioned across rows."""
