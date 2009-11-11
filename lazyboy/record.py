@@ -45,16 +45,22 @@ class Record(CassandraBase, dict):
         if args or kwargs:
             self.update(*args, **kwargs)
 
+    def make_key(self, key=None, super_column=None, **kwargs):
+        """Return a new key."""
+        args = {'keyspace': self._keyspace,
+                'column_family': self._column_family,
+                'key': key,
+                'super_column': super_column}
+        args.update(**kwargs)
+        return Key(**args)
+
     def default_key(self):
         """Return a default key for this record."""
         raise exc.ErrorMissingKey("There is no key set for this record.")
 
     def set_key(self, key, super_column=None):
         """Set the key for this record."""
-        key_args = {'keyspace': self._keyspace,
-                    'column_family': self._column_family}
-        key_args.update(key=key, super_column=super_column)
-        self.key = Key(**key_args)
+        self.key = self.make_key(key=key, super_column=super_column)
         return self
 
     def get_indexes(self):
@@ -242,6 +248,8 @@ class Record(CassandraBase, dict):
         self._get_cas().remove(self.key.keyspace, self.key.key,
                                self.key.get_path(), self.timestamp(),
                                consistency)
+        self._clean()
+        return self
 
     def revert(self):
         """Revert changes, restoring to the state we were in when loaded."""

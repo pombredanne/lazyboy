@@ -26,7 +26,7 @@ def valid(records):
 def missing(records):
     """Returns a tuple indicating any fields missing from the records
     in the set."""
-    return dict([[r.key.key, r.missing()] for r in records if not r.valid()])
+    return dict((r.key.key, r.missing()) for r in records if not r.valid())
 
 
 def modified(records):

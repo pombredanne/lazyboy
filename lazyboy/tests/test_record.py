@@ -50,12 +50,15 @@ class MockClient(Client):
         _inserts.append(cfmap)
         return True
 
+    def remove(self, keyspace, key, column_path, timestamp, consistency_level):
+        return
+
 
 class RecordTest(CassandraBaseTest):
 
     class Record(Record):
-        _key = {'table': 'eggs',
-                'family': 'bacon'}
+        _keyspace = 'eggs',
+        _column_family = 'bacon'
         _required = ('eggs',)
 
     def __init__(self, *args, **kwargs):
@@ -66,6 +69,14 @@ class RecordTest(CassandraBaseTest):
         self.object = self._get_object({'id': 'eggs', 'title': 'bacon'})
         self.assert_(self.object['id'] == 'eggs')
         self.assert_(self.object['title'] == 'bacon')
+
+    def test_make_key(self):
+        """Test make_key."""
+        key = self.object.make_key("eggs")
+        self.assert_(isinstance(key, Key))
+        self.assert_(key.key == "eggs")
+        self.assert_(key.keyspace == self.object._keyspace)
+        self.assert_(key.column_family == self.object._column_family)
 
     def test_default_key(self):
         self.assertRaises(exc.ErrorMissingKey, self.object.default_key)
@@ -262,7 +273,14 @@ class RecordTest(CassandraBaseTest):
                 self.assert_(col.value == data[col.name])
 
     def test_remove(self):
-        pass
+        data = {'eggs': "1", 'bacon': "2", 'sausage': "3"}
+        self.object.update(data)
+        self.object.key = Key("eggs", "bacon", "tomato")
+        self.object._get_cas = self.get_mock_cassandra
+        self.assert_(self.object.remove() is self.object)
+        self.assert_(not self.object.is_modified())
+        for (key, val) in data.iteritems():
+            self.assert_(key not in self.object)
 
     def test_save(self):
         self.assertRaises(exc.ErrorMissingField, self.object.save)
