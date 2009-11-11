@@ -15,6 +15,7 @@ from cassandra.ttypes import ColumnPath, ColumnParent, \
 
 from lazyboy.key import Key
 from lazyboy.base import CassandraBase
+from lazyboy.iterators import multigetterator, unpack
 from lazyboy.record import Record
 from lazyboy.recordset import KeyRecordSet
 from lazyboy.connection import Client
@@ -47,6 +48,7 @@ class View(CassandraBase):
         self.key = view_key
         self.record_key = record_key
         self.record_class = record_class or Record
+        self.reversed = 0
 
     def __repr__(self):
         return "%s: %s" % (self.__class__.__name__, self.key)
@@ -65,14 +67,13 @@ class View(CassandraBase):
             cols = client.get_slice(
                 self.key.keyspace, self.key.key, self.key,
                 SlicePredicate(slice_range=SliceRange(
-                        last_col, end_col, 0, chunk_size + fudge)),
+                        last_col, end_col, self.reversed, chunk_size + fudge)),
                 self.consistency)
 
             if len(cols) == 0:
                 raise StopIteration()
 
-            for obj in cols[fudge:]:
-                col = obj.column
+            for col in unpack(cols[fudge:]):
                 yield self.record_key.clone(key=col.value)
 
             last_col = col.name
@@ -107,7 +108,7 @@ class View(CassandraBase):
         self._get_cas().remove(
             self.key.keyspace, self.key.key,
             self.key.get_path(column=self._record_key(record)),
-            record.timestamp(), ConsistencyLevel.ONE)
+            record.timestamp(), self.consistency)
 
 
 class FaultTolerantView(View):
@@ -131,13 +132,22 @@ class BatchLoadingView(View):
 
     def __init__(self, view_key=None, record_key=None, record_class=None):
         """Initialize the view, setting the chunk_size to a large value."""
-        lzb.View.__init__(self, view_key, record_key, record_class)
+        View.__init__(self, view_key, record_key, record_class)
         self.chunk_size = 5000
 
     def __iter__(self):
         """Batch load and iterate over all objects in this view."""
-        return KeyRecordSet(self._keys(), self.record_class).itervalues()
+        keys = tuple(self._keys())
+        recs = multigetterator(keys, self.consistency)
 
+        if self.record_key.keyspace not in recs or self.record_key.column_family not in recs[self.record_key.keyspace]:
+            raise StopIteration()
+
+        data = recs[self.record_key.keyspace][self.record_key.column_family]
+
+        for k in keys:
+            yield (self.record_class()._inject(
+                self.record_key.clone(key=k.key), data[k.key]))
 
 class PartitionedView(object):
 

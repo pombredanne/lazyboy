@@ -14,6 +14,7 @@ from cassandra.ttypes import Column, ColumnOrSuperColumn
 
 import lazyboy.view as view
 from lazyboy.key import Key
+from lazyboy.iterators import pack, unpack
 from lazyboy.record import Record
 from test_record import MockClient
 
@@ -188,6 +189,47 @@ class PartitionedViewTest(unittest.TestCase):
         for data_set in data:
             self.object.partition_keys = lambda: data_set
             self.assert_(self.object._append_view(record) == "one")
+
+
+class BatchLoadingViewTest(unittest.TestCase):
+
+    """Test lazyboy.view.BatchLoadingView."""
+
+    def test_init(self):
+        self.object = view.BatchLoadingView()
+        self.assert_(hasattr(self.object, 'chunk_size'))
+        self.assert_(isinstance(self.object.chunk_size, int))
+
+    def test_iter(self):
+        mg = view.multigetterator
+
+        self.object = view.BatchLoadingView(None, Key("Eggs", "Bacon"))
+        self.object._keys = lambda: [Key("Eggs", "Bacon", x)
+                                     for x in range(25)]
+
+        columns = [Column(x, x * x) for x in range(10)]
+        data = {'Digg': {'Users': {}}}
+        for key in self.object._keys():
+            data['Digg']['Users'][key] = iter(columns)
+
+        try:
+            view.multigetterator = lambda *args, **kwargs: data
+            self.assert_(isinstance(self.object.__iter__(),
+                                    types.GeneratorType))
+
+            for record in self.object:
+                self.assert_(isinstance(record, Record))
+                self.assert_(hasattr(record, 'key'))
+                self.assert_(record.key.keyspace == "Digg")
+                self.assert_(record.key.column_family == "Users")
+                self.assert_(record.key.key in self.object.keys())
+                for x in range(10):
+                    self.assert_(x in record)
+                    self.assert_(record[x] == x * x)
+
+        finally:
+            view.multigetterator = mg
+
 
 if __name__ == '__main__':
     unittest.main()
