@@ -81,12 +81,17 @@ class KeyTest(unittest.TestCase):
     def test_clone(self):
         pk = Key(keyspace='eggs', key='spam', column_family='bacon')
         ppkk = pk.clone()
+        self.assert_(isinstance(ppkk, Key))
         self.assert_(repr(pk) == repr(ppkk))
         for k in ('keyspace', 'key', 'column_family'):
             self.assert_(getattr(pk, k) == getattr(ppkk, k))
 
         # Changes override base keys, but don't change them.
         _pk = pk.clone(key='sausage')
+        self.assert_(hasattr(_pk, 'keyspace'))
+        self.assert_(hasattr(_pk, 'column_family'))
+        self.assert_(hasattr(_pk, 'key'))
+
         self.assert_(_pk.key == 'sausage')
         self.assert_(pk.key == 'spam')
         _pk = pk.clone(super_column='tomato')

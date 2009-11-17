@@ -67,14 +67,8 @@ class DecoratedKey(Key):
             setattr(self, k, v)
 
     def __getattr__(self, attr):
-        if attr in self.__dict__:
-            return self.__dict__[attr]
-
         if hasattr(self.parent_key, attr):
             return getattr(self.parent_key, attr)
 
         raise AttributeError("`%s' object has no attribute `%s'" % \
                                  (self.__class__.__name__, attr))
-
-    def __hasattr__(self, attr):
-        return attr in self.__dict__ or hasattr(self.parent_key, attr)
