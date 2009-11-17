@@ -140,7 +140,9 @@ class BatchLoadingView(View):
         keys = tuple(self._keys())
         recs = multigetterator(keys, self.consistency)
 
-        if self.record_key.keyspace not in recs or self.record_key.column_family not in recs[self.record_key.keyspace]:
+        if (self.record_key.keyspace not in recs
+            or self.record_key.column_family not in
+            recs[self.record_key.keyspace]):
             raise StopIteration()
 
         data = recs[self.record_key.keyspace][self.record_key.column_family]
@@ -148,6 +150,7 @@ class BatchLoadingView(View):
         for k in keys:
             yield (self.record_class()._inject(
                 self.record_key.clone(key=k.key), data[k.key]))
+
 
 class PartitionedView(object):
 

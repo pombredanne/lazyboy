@@ -122,7 +122,6 @@ class SliceIteratorTest(unittest.TestCase):
                         else:
                             self.assert_(isinstance(column, Column))
 
-
     def test_sparse_get(self):
         """Test sparse_get."""
         key = Key(keyspace="eggs", column_family="bacon", key="tomato")

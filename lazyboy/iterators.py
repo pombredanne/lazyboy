@@ -36,6 +36,7 @@ def slice_iterator(key, consistency, **range_args):
 
     return unpack(res)
 
+
 def multigetterator(keys, consistency, **range_args):
     """Multiget."""
     kwargs = {'start': "", 'finish': "",
@@ -59,6 +60,7 @@ def multigetterator(keys, consistency, **range_args):
                                      for (key, columns) in records.iteritems())
 
     return out
+
 
 def sparse_get(key, columns):
     """Return an iterator over a specific set of columns."""
