@@ -7,15 +7,13 @@
 
 """Lazyboy: Connections."""
 
-import inspect
 import random
 import os
 import threading
 
 from cassandra import *
 from thrift import Thrift
-from thrift.transport import TTransport
-from thrift.transport import TSocket
+from thrift.transport import TTransport, TSocket
 from thrift.protocol import TBinaryProtocol
 
 import lazyboy.exceptions as exc
@@ -64,7 +62,7 @@ class Client(object):
             client = Cassandra.Client(protocol)
             client.transport = transport
             return client
-        except:
+        except Exception:
             return None
 
     def _get_server(self):
@@ -95,7 +93,7 @@ class Client(object):
                 message = "Transport error, reconnect"
             client.transport.close()
             raise exc.ErrorThriftMessage(message)
-        except Exception, e:
+        except Exception:
             client.transport.close()
 
         return False
@@ -104,6 +102,7 @@ class Client(object):
         """Wrap every __func__ call to Cassandra client and connect()."""
 
         def func(*args, **kwargs):
+            """Wrapper function."""
             client = self._get_server()
             if self._connect(client):
                 try:
