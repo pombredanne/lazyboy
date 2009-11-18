@@ -18,6 +18,7 @@ class CrudTest(unittest.TestCase):
     """Test suite for Lazyboy CRUD."""
 
     class FakeClient(object):
+
         def __init__(self):
             self._column = None
             self._inserts = []
@@ -32,10 +33,10 @@ class CrudTest(unittest.TestCase):
             self._inserts.append(args)
 
         def __getattr__(self, attr):
+
             def __inner__(self, *args, **kwargs):
                 return None
             return __inner__
-
 
     def setUp(self):
         self.client = self.FakeClient()
@@ -69,7 +70,6 @@ class CrudTest(unittest.TestCase):
         key = Key("cleese", "palin", "chapman")
         args = (key, "eggs", 456, None)
         crud.remove(*args)
-
 
 
 if __name__ == '__main__':

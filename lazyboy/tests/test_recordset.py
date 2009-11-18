@@ -149,6 +149,7 @@ class TestRecordSet(unittest.TestCase):
         """Make sure RecordSet.save() works."""
 
         class FakeRecord(object):
+
             class Key(object):
                 pass
 

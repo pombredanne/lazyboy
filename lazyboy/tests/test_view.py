@@ -158,6 +158,7 @@ class FaultTolerantViewTest(unittest.TestCase):
         """Make sure FaultTolerantView.__iter__ ignores load errors."""
 
         class IntermittentFailureRecord(object):
+
             def load(self, key):
                 if key % 2 == 0:
                     raise Exception("Failed to load")
