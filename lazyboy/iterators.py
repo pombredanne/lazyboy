@@ -103,9 +103,9 @@ def key_range_iterator(key, start="", finish="", count=100):
 
 def pack(objects):
     """Return a generator which packs objects into ColumnOrSuperColumns."""
-    for object in objects:
-        key = 'column' if isinstance(object, Column) else 'super_column'
-        yield ColumnOrSuperColumn(**{key: object})
+    for object_ in objects:
+        key = 'column' if isinstance(object_, Column) else 'super_column'
+        yield ColumnOrSuperColumn(**{key: object_})
 
 
 def unpack(records):
