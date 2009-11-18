@@ -6,7 +6,7 @@
 
 """Iterator-based Cassandra tools."""
 
-from itertools import groupby
+from itertools import groupby, izip, imap
 from operator import attrgetter
 
 from lazyboy.connection import get_pool
@@ -14,6 +14,16 @@ import lazyboy.exceptions as exc
 
 from cassandra.ttypes import SlicePredicate, SliceRange, ConsistencyLevel, \
     ColumnOrSuperColumn, Column, ColumnParent
+
+
+GET_KEYSPACE = attrgetter("keyspace")
+GET_COLFAM = attrgetter("column_family")
+GET_KEY = attrgetter("key")
+GET_SUPERCOL = attrgetter("super_column")
+
+
+def groupsort(iterable, keyfunc):
+    return groupby(sorted(iterable, key=keyfunc), keyfunc)
 
 
 def slice_iterator(key, consistency, **range_args):
@@ -38,7 +48,14 @@ def slice_iterator(key, consistency, **range_args):
 
 
 def multigetterator(keys, consistency, **range_args):
-    """Multiget."""
+    """Return a dictionary of data from Cassandra.
+
+    This fetches data with the minumum number of network requests. It
+    DOES NOT preserve order.
+
+    If you depend on ordering, use list_multigetterator. This may
+    require more requests.
+    """
     kwargs = {'start': "", 'finish': "",
               'count': 100000, 'reversed': 0}
     kwargs.update(range_args)
@@ -46,18 +63,20 @@ def multigetterator(keys, consistency, **range_args):
     consistency = consistency or ConsistencyLevel.ONE
 
     out = {}
-    for keyspace, keys in groupby(keys, attrgetter('keyspace')):
+    for (keyspace, keys) in groupsort(keys, GET_KEYSPACE):
         client = get_pool(keyspace)
         out[keyspace] = {}
-        for cf, by_cf in groupby(keys, attrgetter('column_family')):
-            out[keyspace][cf] = {}
+        for (colfam, keys) in groupsort(keys, GET_COLFAM):
+            out[keyspace][colfam] = {}
             records = client.multiget_slice(
-                keyspace, map(attrgetter('key'), by_cf), ColumnParent(cf),
+                keyspace, map(GET_KEY, keys),
+                ColumnParent(colfam, None),
                 SlicePredicate(slice_range=SliceRange(**kwargs)),
                 consistency)
 
-            out[keyspace][cf] = dict((key, unpack(columns))
-                                     for (key, columns) in records.iteritems())
+            out[keyspace][colfam] = dict(
+                (key, unpack(columns))
+                for (key, columns) in records.iteritems())
 
     return out
 
