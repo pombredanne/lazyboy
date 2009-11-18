@@ -6,6 +6,7 @@
 """Lazyboy: Record."""
 
 import time
+import copy
 from itertools import ifilterfalse as filternot
 
 from cassandra.ttypes import Column, SuperColumn
@@ -210,7 +211,7 @@ class Record(CassandraBase, dict):
             # Clean up internal state
             if changes['changed']:
                 self._modified.clear()
-            self._original = self._columns.copy()
+            self._original = copy.deepcopy(self._columns)
 
         return self
 

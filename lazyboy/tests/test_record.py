@@ -324,6 +324,12 @@ class RecordTest(CassandraBaseTest):
             self.assert_(col == self.object._columns[col.name],
                          "Column from cf._columns wasn't used in mutation_t")
 
+            self.assert_(
+                self.object._original['eggs']
+                is not self.object._columns['eggs'],
+                "Internal state corrupted on save.")
+
+
     def test_save_index(self):
 
         class FakeView(object):
