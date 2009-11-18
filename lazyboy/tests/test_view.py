@@ -19,6 +19,27 @@ from lazyboy.record import Record
 from test_record import MockClient
 
 
+class IterTimeTest(unittest.TestCase):
+
+    """Test lazyboy.view time iteration functions."""
+
+    def test_iter_time(self):
+        """Test _iter_time."""
+        iterator = view._iter_time(days=1)
+        first = 0
+        for x in range(10):
+            val = iterator.next()
+            self.assert_(val > first)
+
+    def test_test_iter_days(self):
+        """Test _iter_days."""
+        iterator = view._iter_days()
+        first = "19000101"
+        for x in range(10):
+            val = iterator.next()
+            self.assert_(val > first)
+
+
 class ViewTest(unittest.TestCase):
     """Unit tests for Lazyboy views."""
 
@@ -122,25 +143,67 @@ class ViewTest(unittest.TestCase):
         self.object.append(rec)
 
 
-class IterTimeTest(unittest.TestCase):
+class FaultTolerantViewTest(unittest.TestCase):
 
-    """Test lazyboy.view time iteration functions."""
+    """Test suite for lazyboy.view.FaultTolerantView."""
 
-    def test_iter_time(self):
-        """Test _iter_time."""
-        iterator = view._iter_time(days=1)
-        first = 0
-        for x in range(10):
-            val = iterator.next()
-            self.assert_(val > first)
+    def test_iter(self):
+        """Make sure FaultTolerantView.__iter__ ignores load errors."""
 
-    def test_test_iter_days(self):
-        """Test _iter_days."""
-        iterator = view._iter_days()
-        first = "19000101"
-        for x in range(10):
-            val = iterator.next()
-            self.assert_(val > first)
+        class IntermittentFailureRecord(object):
+            def load(self, key):
+                if key % 2 == 0:
+                    raise Exception("Failed to load")
+                self.key = key
+                return self
+
+        ftv = view.FaultTolerantView()
+        ftv.record_class = IntermittentFailureRecord
+        ftv._keys = lambda: range(10)
+        res = tuple(ftv)
+        self.assert_(len(res) == 5)
+        for record in res:
+            self.assert_(record.key % 2 != 0)
+
+
+class BatchLoadingViewTest(unittest.TestCase):
+
+    """Test lazyboy.view.BatchLoadingView."""
+
+    def test_init(self):
+        self.object = view.BatchLoadingView()
+        self.assert_(hasattr(self.object, 'chunk_size'))
+        self.assert_(isinstance(self.object.chunk_size, int))
+
+    def test_iter(self):
+        mg = view.multigetterator
+
+        self.object = view.BatchLoadingView(None, Key("Eggs", "Bacon"))
+        self.object._keys = lambda: [Key("Eggs", "Bacon", x)
+                                     for x in range(25)]
+
+        columns = [Column(x, x * x) for x in range(10)]
+        data = {'Digg': {'Users': {}}}
+        for key in self.object._keys():
+            data['Digg']['Users'][key] = iter(columns)
+
+        try:
+            view.multigetterator = lambda *args, **kwargs: data
+            self.assert_(isinstance(self.object.__iter__(),
+                                    types.GeneratorType))
+
+            for record in self.object:
+                self.assert_(isinstance(record, Record))
+                self.assert_(hasattr(record, 'key'))
+                self.assert_(record.key.keyspace == "Digg")
+                self.assert_(record.key.column_family == "Users")
+                self.assert_(record.key.key in self.object.keys())
+                for x in range(10):
+                    self.assert_(x in record)
+                    self.assert_(record[x] == x * x)
+
+        finally:
+            view.multigetterator = mg
 
 
 class PartitionedViewTest(unittest.TestCase):
@@ -189,46 +252,6 @@ class PartitionedViewTest(unittest.TestCase):
         for data_set in data:
             self.object.partition_keys = lambda: data_set
             self.assert_(self.object._append_view(record) == "one")
-
-
-class BatchLoadingViewTest(unittest.TestCase):
-
-    """Test lazyboy.view.BatchLoadingView."""
-
-    def test_init(self):
-        self.object = view.BatchLoadingView()
-        self.assert_(hasattr(self.object, 'chunk_size'))
-        self.assert_(isinstance(self.object.chunk_size, int))
-
-    def test_iter(self):
-        mg = view.multigetterator
-
-        self.object = view.BatchLoadingView(None, Key("Eggs", "Bacon"))
-        self.object._keys = lambda: [Key("Eggs", "Bacon", x)
-                                     for x in range(25)]
-
-        columns = [Column(x, x * x) for x in range(10)]
-        data = {'Digg': {'Users': {}}}
-        for key in self.object._keys():
-            data['Digg']['Users'][key] = iter(columns)
-
-        try:
-            view.multigetterator = lambda *args, **kwargs: data
-            self.assert_(isinstance(self.object.__iter__(),
-                                    types.GeneratorType))
-
-            for record in self.object:
-                self.assert_(isinstance(record, Record))
-                self.assert_(hasattr(record, 'key'))
-                self.assert_(record.key.keyspace == "Digg")
-                self.assert_(record.key.column_family == "Users")
-                self.assert_(record.key.key in self.object.keys())
-                for x in range(10):
-                    self.assert_(x in record)
-                    self.assert_(record[x] == x * x)
-
-        finally:
-            view.multigetterator = mg
 
 
 if __name__ == '__main__':
