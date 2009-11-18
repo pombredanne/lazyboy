@@ -6,9 +6,8 @@
 """Lazyboy: Key."""
 
 import uuid
-from copy import copy
 
-from cassandra.ttypes import ColumnPath, ColumnParent, ConsistencyLevel
+from cassandra.ttypes import ColumnPath, ColumnParent
 
 from lazyboy.base import CassandraBase
 from lazyboy.exceptions import ErrorIncompleteKey

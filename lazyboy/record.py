@@ -8,8 +8,7 @@
 import time
 from itertools import ifilterfalse as filternot
 
-from cassandra.ttypes import Column, SuperColumn, SlicePredicate, \
-    SliceRange, ConsistencyLevel
+from cassandra.ttypes import Column, SuperColumn
 
 from lazyboy.base import CassandraBase
 from lazyboy.key import Key

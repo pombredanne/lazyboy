@@ -5,7 +5,6 @@
 #
 """Efficiently handle sets of Records."""
 
-import time
 from UserDict import UserDict
 from itertools import groupby
 from operator import attrgetter

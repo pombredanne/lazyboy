@@ -13,7 +13,7 @@ from lazyboy.connection import get_pool
 import lazyboy.exceptions as exc
 
 from cassandra.ttypes import SlicePredicate, SliceRange, ConsistencyLevel, \
-    ColumnOrSuperColumn, Column, SuperColumn, ColumnParent
+    ColumnOrSuperColumn, Column, ColumnParent
 
 
 def slice_iterator(key, consistency, **range_args):

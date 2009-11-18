@@ -5,23 +5,20 @@
 #
 """Lazyboy: Views."""
 
-import time
 import datetime
-import hashlib
 import uuid
 
-from cassandra.ttypes import ColumnPath, ColumnParent, \
-    SlicePredicate, SliceRange
+from cassandra.ttypes import SlicePredicate, SliceRange
 
 from lazyboy.key import Key
 from lazyboy.base import CassandraBase
 from lazyboy.iterators import multigetterator, unpack
 from lazyboy.record import Record
-from lazyboy.recordset import KeyRecordSet
 from lazyboy.connection import Client
 
 
 def _iter_time(start=None, **kwargs):
+    """Return a sequence which iterates time."""
     day = start or datetime.datetime.today()
     intv = datetime.timedelta(**kwargs)
     while day.year >= 1900:
@@ -30,6 +27,7 @@ def _iter_time(start=None, **kwargs):
 
 
 def _iter_days(start=None):
+    """Return a sequence which iterates over time one day at a time."""
     return _iter_time(start, days=1)
 
 
@@ -122,7 +120,7 @@ class FaultTolerantView(View):
                 yield self.record_class().load(key)
             except GeneratorExit:
                 raise
-            except Exception, e:
+            except Exception:
                 pass
 
 
