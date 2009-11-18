@@ -7,6 +7,12 @@
 #
 
 from setuptools import setup, find_packages
+import os
+import glob
+
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+DEPS = glob.glob(os.path.dirname(os.path.abspath(__file__)) + "/deps/*")
+DEPS.append("http://github.com/ieure/python-cassandra/downloads")
 
 setup(name="Lazyboy",
       version='0.7.4dev23',
@@ -21,4 +27,4 @@ setup(name="Lazyboy",
       install_requires=['Thrift', 'Cassandra>=0.4.0'],
       zip_safe=False,
       tests_require=['nose', 'coverage'],
-      dependency_links=["http://github.com/ieure/python-cassandra/downloads"])
+      dependency_links=DEPS)

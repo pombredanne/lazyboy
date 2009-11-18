@@ -13,3 +13,4 @@ debian/python-lazyboy*
 debian/stamp-*
 python-build-stamp*
 README.html
+xunit.xml

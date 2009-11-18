@@ -1,15 +1,26 @@
-SRCDIR      = lazyboy
-PYTHON     ?= $(shell test -f bin/python && echo bin/python || which python)
+PYTHON      = $(shell test -x bin/python && echo bin/python || \
+                      echo `which python`)
 PYVERS      = $(shell $(PYTHON) -c 'import sys; print "%s.%s" % sys.version_info[0:2]')
-VIRTUALENV ?= $(shell test -x `which virtualenv` && which virtualenv || \
-                      test -x `which virtualenv-$(PYVERS)` && \
-                          which virtualenv-$(PYVERS))
+VIRTUALENV  = $(shell /bin/echo -n `which virtualenv || \
+                                    which virtualenv-$(PYVERS) || \
+                                    which virtualenv$(PYVERS)`)
 VIRTUALENV += --no-site-packages
+PAGER      ?= less
+DEPS       := $(shell find $(PWD)/deps -type f -printf "file://%p ")
+COVERAGE    = $(shell test -x bin/coverage && echo bin/coverage || echo true)
 SETUP       = $(PYTHON) ./setup.py
+EZ_INSTALL  = $(SETUP) easy_install -f "$(DEPS)"
+PYLINT      = bin/pylint
 PLATFORM    = $(shell $(PYTHON) -c "from pkg_resources import get_build_platform; print get_build_platform()")
-EGG         = $(shell $(SETUP) --fullname)-py$(PYVERS).egg
-SOURCES     = $(shell find . -type f -name \*.py)
-COVERED    := $(shell find $(SRCDIR) -type f -name \*.py -not -name 'test_*')
+OS         := $(shell uname)
+EGG        := $(shell $(SETUP) --fullname)-py$(PYVERS).egg
+SDIST      := $(shell $(SETUP) --fullname).tar.gs
+SRCDIR     := lazyboy
+SOURCES    := $(shell find $(SRCDIR) -type f -name \*.py -not -name 'test_*')
+TESTS      := $(shell find $(SRCDIR) -type f -name test_\*.py)
+COVERED    := $(shell find $(SRCDIR) -type f -name \*.py -not -name 'test_*' \
+                      -and -not -path '*digg/service/*/transport/*')
+ROOT        = $(shell pwd)
 
 .PHONY: test dev clean extraclean
 
@@ -25,22 +36,65 @@ sdist:
 deb:
 	dpkg-buildpackage -rfakeroot -us -uc -b
 
-test:
+test: bin/nosetests
 	$(SETUP) test
 
-coverage: coverage/index.html
-coverage/index.html: .coverage
-	coverage -b -i -d $(@D) $(COVERED)
+xunit.xml: bin/nosetests $(SOURCES) $(TESTS)
+	$(SETUP) test --with-xunit --xunit-file=$@
 
-.coverage: $(SOURCES)
-	-coverage -e -x setup.py test
+bin/nosetests: bin/easy_install
+	@$(EZ_INSTALL) nose
 
-env: .Python
-.Python:
-	$(VIRTUALENV) .
+coverage: .coverage
+	@$(COVERAGE) -b -i -d $@ $(COVERED)
 
-dev: .Python setup.py
-	$(SETUP) develop
+.coverage: $(SOURCES) $(TESTS) bin/coverage bin/nosetests
+	-@$(COVERAGE) -e -x bin/nosetests -q
+
+bin/coverage: bin/easy_install
+	@$(EZ_INSTALL) coverage
+
+profile: .profile bin/pyprof2html
+	bin/pyprof2html -o $@ $<
+
+.profile: $(SOURCES) bin/nosetests
+	-$(SETUP) test -q --with-profile --profile-stats-file=$@
+
+bin/pyprof2html: bin/easy_install bin/
+	@$(EZ_INSTALL) pyprof2html
+
+docs: $(SOURCES) bin/epydoc
+	@echo bin/epydoc -q --html --no-frames -o $@ ...
+	@bin/epydoc -q --html --no-frames -o $@ $(SOURCES)
+
+bin/epydoc: bin/easy_install
+	@$(EZ_INSTALL) epydoc
+
+bin/pep8: bin/easy_install
+	@$(EZ_INSTALL) pep8
+
+pep8: bin/pep8
+	@bin/pep8 --repeat --exclude transport --ignore E225 $(SRCDIR)
+
+lint: bin/pylint
+	$(PYLINT) -f colorized $(SRCDIR)
+
+lint.html: bin/pylint
+	$(PYLINT) -f html $(SRCDIR) > $@
+
+bin/pylint: bin/easy_install
+	@$(EZ_INSTALL) pylint
+
+README.html: README.mkd | bin/markdown
+	bin/markdown -e utf-8 $^ -f $@
+
+bin/markdown: bin/easy_install
+	@$(EZ_INSTALL) Markdown
+
+
+# Development setup
+rtfm:
+	$(PAGER) README.mkd
 
 tags: TAGS.gz
 
@@ -50,9 +104,27 @@ TAGS.gz: TAGS
 TAGS: $(SOURCES)
 	ctags -eR .
 
-clean:
-	$(SETUP) clean
-	rm -rf *.egg-info build dist
+env: bin/easy_install
 
+bin/easy_install:
+	$(VIRTUALENV) .
+	-test -f deps/setuptools* && $@ -U deps/setuptools*
+
+dev: develop
+develop: env
+	nice -n 20 $(SETUP) develop
+	@echo "            ---------------------------------------------"
+	@echo "            To activate the development environment, run:"
+	@echo "                           . bin/activate"
+	@echo "            ---------------------------------------------"
+
+clean:
+	find . -type f -name \*.pyc -exec rm {} \;
+	rm -rf build dist TAGS TAGS.gz digg.egg-info tmp coverage docs lint.html \
+	       profile .profile *.egg
+	@if test "$(OS)" = "Linux"; then fakeroot debian/rules clean; fi
+	@$(COVERAGE) -e
+
+xclean: extraclean
 extraclean: clean
-	rm -rf bin include lib .Python
+	rm -rf bin lib .Python include
