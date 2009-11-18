@@ -8,6 +8,8 @@
 import unittest
 import uuid
 from random import randrange, sample
+from operator import attrgetter
+from functools import partial
 
 from test_base import CassandraBaseTest
 from test_record import MockClient, _last_cols, _inserts
@@ -16,7 +18,8 @@ from cassandra.ttypes import ColumnOrSuperColumn
 
 from lazyboy.key import Key
 from lazyboy.record import Record
-from lazyboy.recordset import valid, missing, modified, RecordSet, KeyRecordSet
+import lazyboy.recordset as sets
+#import valid, missing, modified, RecordSet, KeyRecordSet
 from lazyboy.exceptions import ErrorMissingKey, ErrorMissingField
 
 
@@ -44,34 +47,34 @@ class TestFunctions(unittest.TestCase):
 
     def test_valid(self):
         """Test lazyboy.recordset.valid."""
-        self.assert_(valid(self.records))
+        self.assert_(sets.valid(self.records))
         invalid = rand_set(self.records)
         for record in invalid:
             record.valid = lambda: False
 
-        self.assert_(not valid(invalid))
-        self.assert_(not valid(self.records))
+        self.assert_(not sets.valid(invalid))
+        self.assert_(not sets.valid(self.records))
 
     def test_missing(self):
         """Test lazyboy.recordset.missing."""
-        self.assert_(not missing(self.records))
+        self.assert_(not sets.missing(self.records))
         records = rand_set(self.records)
         for record in records:
             record.missing = lambda: ('eggs', 'bacon')
 
-        self.assert_(missing(records))
-        self.assert_(missing(self.records))
+        self.assert_(sets.missing(records))
+        self.assert_(sets.missing(self.records))
 
     def test_modified(self):
         """Test lazyboy.recordset.modified."""
-        self.assert_(not modified(self.records))
+        self.assert_(not sets.modified(self.records))
         records = rand_set(self.records)
         for record in records:
             record.is_modified = lambda: True
 
-        self.assert_(modified(records))
-        self.assert_(tuple(modified(records)) == tuple(records))
-        self.assert_(modified(self.records))
+        self.assert_(sets.modified(records))
+        self.assert_(tuple(sets.modified(records)) == tuple(records))
+        self.assert_(sets.modified(self.records))
 
 
 class TestRecordSet(unittest.TestCase):
@@ -79,7 +82,7 @@ class TestRecordSet(unittest.TestCase):
 
     def setUp(self):
         """Prepare the test object."""
-        self.object = RecordSet()
+        self.object = sets.RecordSet()
 
     def _get_records(self, count, **kwargs):
         """Return records for testing."""
@@ -109,12 +112,12 @@ class TestRecordSet(unittest.TestCase):
     def test_init(self):
         """Make sure the object can be constructed."""
         records = self._get_records(5, keyspace="eggs", column_family="bacon")
-        rs = RecordSet(records)
+        rs = sets.RecordSet(records)
 
     def test_basic(self):
         """Make sure basic functionality works."""
         records = self._get_records(5, keyspace="eggs", column_family="bacon")
-        rs = RecordSet(records)
+        rs = sets.RecordSet(records)
         self.assert_(len(rs) == len(records))
         self.assert_(rs.values() == records)
         self.assert_(set(rs.keys()) == set(record.key.key
@@ -145,44 +148,38 @@ class TestRecordSet(unittest.TestCase):
     def test_save(self):
         """Make sure RecordSet.save() works."""
 
-        return
-        is_modified = {}
+        class FakeRecord(object):
+            class Key(object):
+                pass
 
-        def record_save(self):
-            """Dummy method which removes the modified flag from a record."""
-            is_modified[self.key.key] = False
-            return self
+            def __init__(self):
+                self.saved = False
+                self.key = self.Key()
+                self.key.key = str(uuid.uuid4())
 
-        def record_is_modified(self):
-            """Return the fake modified state of a record."""
-            return is_modified[self.key.key]
+            def save(self):
+                self.saved = True
+                return self
 
-        try:
-            _real_save = Record.save
-            _real_is_modified = Record.is_modified
+            def is_modified(self):
+                return True
 
-            Record.save = record_save
-            Record.is_modified = record_is_modified
+            def valid(self):
+                return True
 
-            records = self._get_records(
-                5, keyspace="eggs", column_family="bacon")
 
-            for record in records:
-                is_modified[record.key.key] = True
-                self.object.append(record)
-
-            self.object.save()
-            self.assert_(
-                not any([r.is_modified() for r in self.object.values()]))
-        finally:
-            Record.save = _real_save
-            Record.is_modified = _real_is_modified
+        records = [FakeRecord() for x in range(10)]
+        map(self.object.append, records)
+        self.object.save()
+        for record in records:
+            self.assert_(record.saved)
+            self.assert_(self.object[record.key.key] is record)
 
 
 class KeyRecordSetTest(unittest.TestCase):
 
     def setUp(self):
-        self.object = KeyRecordSet()
+        self.object = sets.KeyRecordSet()
 
     def test_batch_load(self):
         records, keys = [], []
@@ -202,7 +199,7 @@ class KeyRecordSetTest(unittest.TestCase):
         mock_client = MockClient([])
         mock_client.multiget_slice = \
             lambda ks, keys, parent, pred, clvl: backing
-        self.object._get_cas = lambda ks: mock_client
+        sets.itr.get_pool = lambda ks: mock_client
 
         out_records = self.object._batch_load(Record, keys)
         for record in out_records:
@@ -214,34 +211,9 @@ class KeyRecordSetTest(unittest.TestCase):
 
     def test_init(self):
         """Make sure KeyRecordSet.__init__ works as expected"""
-        records, keys = [], []
-        for x in range(10):
-            record = Record()
-            record.key = Key('eggs', 'bacon')
-            record['number'] = x
-            record['square'] = x * x
-            records.append(record)
-            keys.append(record.key)
-
-        backing = {}
-        for record in records:
-            backing[record.key.key] = [ColumnOrSuperColumn(col)
-                                       for col in record._columns.values()]
-
-        mock_client = MockClient([])
-        mock_client.multiget_slice = \
-            lambda ks, keys, parent, pred, clvl: backing
-        KeyRecordSet._get_cas = lambda inst, ks: mock_client
-
-        obj = KeyRecordSet(keys)
-        self.assert_(len(obj) == len(backing))
-        for (key, record) in obj.iteritems():
-            self.assert_(isinstance(record, Record))
-            self.assert_(key == record.key.key)
-            self.assert_(record.key in keys)
-            orig = records[records.index(record)]
-            self.assert_(orig['number'] == record['number'])
-            self.assert_(orig['square'] == record['square'])
+        fake_key = partial(Key, "Eggs", "Bacon")
+        keys = [fake_key(str(uuid.uuid1())) for x in range(10)]
+        rs = sets.KeyRecordSet(keys, Record)
 
 
 if __name__ == '__main__':

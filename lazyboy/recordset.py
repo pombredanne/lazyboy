@@ -12,9 +12,10 @@ from operator import attrgetter
 from cassandra.ttypes import ColumnParent, SlicePredicate, SliceRange
 
 from lazyboy.key import Key
+import lazyboy.iterators as itr
 from lazyboy.record import Record
 from lazyboy.base import CassandraBase
-from lazyboy.exceptions import ErrorMissingKey, ErrorMissingField
+from lazyboy.exceptions import ErrorMissingField
 
 
 def valid(records):
@@ -84,15 +85,10 @@ class KeyRecordSet(RecordSet):
 
     def _batch_load(self, record_class, keys):
         """Return an iterator of records for the given keys."""
-        for keyspace, keys in groupby(keys, attrgetter('keyspace')):
-            client = self._get_cas(keyspace)
-            for cf, by_cf in groupby(keys, attrgetter('column_family')):
-                records = client.multiget_slice(
-                    keyspace, map(attrgetter('key'), by_cf), ColumnParent(cf),
-                    SlicePredicate(slice_range=SliceRange("", "", 0, 9999)),
-                    self.consistency)
-
-                for (r_key, r_cols) in records.iteritems():
+        data = itr.multigetterator(keys, self.consistency)
+        for (keyspace, col_fams) in data.iteritems():
+            for (col_fam, rows) in col_fams.iteritems():
+                for (row_key, cols) in rows.iteritems():
                     yield record_class()._inject(
-                        Key(keyspace=keyspace, column_family=cf, key=r_key),
-                        map(attrgetter('column'), r_cols))
+                        Key(keyspace=keyspace, column_family=col_fam,
+                            key=row_key), cols)
