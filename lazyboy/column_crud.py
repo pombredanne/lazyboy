@@ -23,7 +23,7 @@ def get_column(key, column_name, consistency=None):
 
 def set_column(key, column, consistency=None):
     """Set a column."""
-    assert isinstance(column, Column)
+    assert isinstance(column, cas_types.Column)
     consistency = consistency or cas_types.ConsistencyLevel.ONE
     return set(key, column.name, column.value, column.timestamp, consistency)
 
