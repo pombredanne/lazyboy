@@ -6,6 +6,7 @@
 """Efficiently handle sets of Records."""
 
 from UserDict import UserDict
+from itertools import ifilter
 
 from lazyboy.key import Key
 import lazyboy.iterators as itr
@@ -16,7 +17,7 @@ from lazyboy.exceptions import ErrorMissingField
 
 def valid(records):
     """Returns True if all records in the set are valid."""
-    return all([record.valid() for record in records])
+    return all(record.valid() for record in records)
 
 
 def missing(records):
@@ -27,7 +28,7 @@ def missing(records):
 
 def modified(records):
     """Returns a tuple of modifiedrecords in the set."""
-    return tuple(filter(lambda r: r.is_modified(), records))
+    return tuple(ifilter(lambda r: r.is_modified(), records))
 
 
 class RecordSet(CassandraBase, UserDict):
