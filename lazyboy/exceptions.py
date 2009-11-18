@@ -56,6 +56,7 @@ class ErrorCassandraNoServersConfigured(LazyboyException):
     """Raised when Client has no servers, but was asked for one."""
     pass
 
+
 class ErrorImmutable(LazyboyException):
     """Raised on an attempt to modify an immutable object."""
     pass
