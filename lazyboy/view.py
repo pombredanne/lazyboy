@@ -51,6 +51,11 @@ class View(CassandraBase):
     def __repr__(self):
         return "%s: %s" % (self.__class__.__name__, self.key)
 
+    def __len__(self):
+        """Return the number of records in this view."""
+        return self._get_cas().get_count(
+            self.key.keyspace, self.key.key, self.key, self.consistency)
+
     def _keys(self, start_col=None, end_col=None):
         """Return keys in the view."""
         client = self._get_cas()

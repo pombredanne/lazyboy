@@ -49,12 +49,19 @@ class ViewTest(unittest.TestCase):
         obj.key = Key(keyspace='eggs', column_family='bacon',
                       key='dummy_view')
         obj.record_key = Key(keyspace='spam', column_family='tomato')
-        obj._get_cas = lambda: MockClient(['localhost:1234'])
+        self.client = MockClient(['localhost:1234'])
+        obj._get_cas = lambda: self.client
         self.object = obj
 
     def test_repr(self):
         """Test view.__repr__."""
         self.assert_(isinstance(repr(self.object), str))
+
+    def test_len(self):
+        """Test View.__len__."""
+        self.client.get_count = lambda *args: 99
+        self.object.key = Key("Eggs", "Bacon")
+        self.assert_(len(self.object) == 99)
 
     def test_keys_types(self):
         """Ensure that View._keys() returns the correct type & keys."""
@@ -158,6 +165,11 @@ class FaultTolerantViewTest(unittest.TestCase):
                 return self
 
         ftv = view.FaultTolerantView()
+
+        client = MockClient(['localhost:1234'])
+        client.get_count = lambda *args: 99
+        ftv._get_cas = lambda: client
+
         ftv.record_class = IntermittentFailureRecord
         ftv._keys = lambda: range(10)
         res = tuple(ftv)
