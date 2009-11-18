@@ -179,12 +179,7 @@ class PartitionedView(object):
         can partition by anything, e.g. first letter of some field in
         the record.
         """
-        keys = self.partition_keys()
-        if hasattr(keys, 'next'):
-            key = keys.next()
-        else:
-            key = keys[0]
-
+        key = iter(self.partition_keys()).next()
         return self._get_view(key)
 
     def append(self, record):
