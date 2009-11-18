@@ -8,7 +8,7 @@
 
 from cassandra.ttypes import ConsistencyLevel
 
-from lazyboy.exceptions import ErrorUnknownKeyspace, ErrorIncompleteKey
+from lazyboy.exceptions import ErrorIncompleteKey
 import lazyboy.connection as connection
 
 

@@ -6,10 +6,6 @@
 """Efficiently handle sets of Records."""
 
 from UserDict import UserDict
-from itertools import groupby
-from operator import attrgetter
-
-from cassandra.ttypes import ColumnParent, SlicePredicate, SliceRange
 
 from lazyboy.key import Key
 import lazyboy.iterators as itr

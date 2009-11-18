@@ -10,7 +10,7 @@ import unittest
 from lazyboy.base import CassandraBase
 import lazyboy.connection
 from lazyboy.key import Key
-from lazyboy.exceptions import ErrorUnknownKeyspace, ErrorIncompleteKey
+from lazyboy.exceptions import ErrorIncompleteKey
 
 
 class CassandraBaseTest(unittest.TestCase):
