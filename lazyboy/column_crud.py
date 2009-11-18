@@ -14,6 +14,7 @@ from lazyboy.iterators import unpack
 
 def get_column(key, column_name, consistency=None):
     """Get a column."""
+    consistency = consistency or cas_types.ConsistencyLevel.ONE
     return unpack(
         [get_pool(key.keyspace).get(
             key.keyspace, key.key,
@@ -22,7 +23,8 @@ def get_column(key, column_name, consistency=None):
 
 def set_column(key, column, consistency=None):
     """Set a column."""
-    assert isinstance(column, cas_types.Column)
+    assert isinstance(column, Column)
+    consistency = consistency or cas_types.ConsistencyLevel.ONE
     return set(key, column.name, column.value, column.timestamp, consistency)
 
 
@@ -33,6 +35,7 @@ def get(key, column, consistency=None):
 
 def set(key, name, value, timestamp=None, consistency=None):
     """Set a column's value."""
+    consistency = consistency or cas_types.ConsistencyLevel.ONE
     get_pool(key.keyspace).insert(
         key.keyspace, key.key, key.get_path(column=name), value, timestamp,
         consistency)
@@ -40,6 +43,7 @@ def set(key, name, value, timestamp=None, consistency=None):
 
 def remove(key, column, timestamp=None, consistency=None):
     """Remove a column."""
+    consistency = consistency or cas_types.ConsistencyLevel.ONE
     get_pool(key.keyspace).remove(key.keyspace, key.key,
                                   key.get_path(column=column), timestamp,
                                   consistency)
