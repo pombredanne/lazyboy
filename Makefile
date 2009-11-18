@@ -46,10 +46,13 @@ bin/nosetests: bin/easy_install
 	@$(EZ_INSTALL) nose
 
 coverage: .coverage
-	@$(COVERAGE) -b -i -d $@ $(COVERED)
+	@$(COVERAGE) html -d $@ $(COVERED)
+
+coverage.xml: .coverage
+	@$(COVERAGE) xml $(COVERED)
 
 .coverage: $(SOURCES) $(TESTS) bin/coverage bin/nosetests
-	-@$(COVERAGE) -e -x bin/nosetests -q
+	-@$(COVERAGE) run bin/nosetests -q
 
 bin/coverage: bin/easy_install
 	@$(EZ_INSTALL) coverage
@@ -74,13 +77,19 @@ bin/pep8: bin/easy_install
 	@$(EZ_INSTALL) pep8
 
 pep8: bin/pep8
-	@bin/pep8 --repeat --exclude transport --ignore E225 $(SRCDIR)
+	@bin/pep8 --repeat --ignore E225 $(SRCDIR)
+
+pep8.txt: bin/pep8
+	@bin/pep8 --repeat --ignore E225 $(SRCDIR) > $@
 
 lint: bin/pylint
-	$(PYLINT) -f colorized $(SRCDIR)
+	-$(PYLINT) -f colorized $(SRCDIR)
 
 lint.html: bin/pylint
-	$(PYLINT) -f html $(SRCDIR) > $@
+	-$(PYLINT) -f html $(SRCDIR) > $@
+
+lint.txt: bin/pylint
+	-$(PYLINT) -f parseable $(SRCDIR) > $@
 
 bin/pylint: bin/easy_install
 	@$(EZ_INSTALL) pylint
@@ -120,10 +129,11 @@ develop: env
 
 clean:
 	find . -type f -name \*.pyc -exec rm {} \;
-	rm -rf build dist TAGS TAGS.gz digg.egg-info tmp coverage docs lint.html \
-	       profile .profile *.egg
+	rm -rf build dist TAGS TAGS.gz digg.egg-info tmp .coverage \
+	       coverage coverage.xml docs lint.html lint.txt profile \
+	       .profile *.egg xunit.xml
 	@if test "$(OS)" = "Linux"; then fakeroot debian/rules clean; fi
-	@$(COVERAGE) -e
+
 
 xclean: extraclean
 extraclean: clean

@@ -26,5 +26,5 @@ setup(name="Lazyboy",
       keywords="database cassandra",
       install_requires=['Thrift', 'Cassandra>=0.4.0'],
       zip_safe=False,
-      tests_require=['nose', 'coverage'],
+      tests_require=['nose', 'coverage>=3.2b1'],
       dependency_links=DEPS)
