@@ -6,7 +6,7 @@
 
 """Iterator-based Cassandra tools."""
 
-from itertools import groupby, izip, imap
+from itertools import groupby
 from operator import attrgetter
 from collections import defaultdict
 
@@ -24,6 +24,7 @@ GET_SUPERCOL = attrgetter("super_column")
 
 
 def groupsort(iterable, keyfunc):
+    """Return a generator which sort and groups a list."""
     return groupby(sorted(iterable, key=keyfunc), keyfunc)
 
 
@@ -75,9 +76,7 @@ def multigetterator(keys, consistency, **range_args):
             for (supercol, sc_keys) in groupsort(cf_keys, GET_SUPERCOL):
                 records = client.multiget_slice(
                     keyspace, map(GET_KEY, sc_keys),
-                    ColumnParent(colfam, supercol),
-                    SlicePredicate(slice_range=SliceRange(**kwargs)),
-                    consistency)
+                    ColumnParent(colfam, supercol), predicate, consistency)
 
                 for (row_key, cols) in records.iteritems():
                     cols = unpack(cols)
@@ -85,8 +84,6 @@ def multigetterator(keys, consistency, **range_args):
                         out[keyspace][colfam][row_key] = cols
                     else:
                         out[keyspace][colfam][row_key][supercol] = cols
-
-    return out
 
     return out
 

@@ -32,6 +32,7 @@ class Key(ColumnParent, CassandraBase):
         return uuid.uuid4().hex
 
     def is_super(self):
+        """Return a boolean indicating if this is a key to a supercolumn."""
         return bool(self.super_column)
 
     def _attrs(self):
@@ -48,6 +49,7 @@ class Key(ColumnParent, CassandraBase):
         return unicode(str(self))
 
     def get_path(self, **kwargs):
+        """Return a new ColumnPath for this key."""
         new = self._attrs()
         del new['keyspace'], new['key']
         new.update(kwargs)
@@ -62,8 +64,8 @@ class DecoratedKey(Key):
 
     def __init__(self, parent_key, **kwargs):
         self.parent_key = parent_key
-        for (k, v) in kwargs.items():
-            setattr(self, k, v)
+        for (key, val) in kwargs.items():
+            setattr(self, key, val)
 
     def __getattr__(self, attr):
         if hasattr(self.parent_key, attr):
