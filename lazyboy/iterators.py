@@ -8,6 +8,7 @@
 
 from itertools import groupby, izip, imap
 from operator import attrgetter
+from collections import defaultdict
 
 from lazyboy.connection import get_pool
 import lazyboy.exceptions as exc
@@ -63,20 +64,29 @@ def multigetterator(keys, consistency, **range_args):
     consistency = consistency or ConsistencyLevel.ONE
 
     out = {}
-    for (keyspace, keys) in groupsort(keys, GET_KEYSPACE):
+    for (keyspace, ks_keys) in groupsort(keys, GET_KEYSPACE):
         client = get_pool(keyspace)
         out[keyspace] = {}
-        for (colfam, keys) in groupsort(keys, GET_COLFAM):
-            out[keyspace][colfam] = {}
-            records = client.multiget_slice(
-                keyspace, map(GET_KEY, keys),
-                ColumnParent(colfam, None),
-                SlicePredicate(slice_range=SliceRange(**kwargs)),
-                consistency)
+        for (colfam, cf_keys) in groupsort(ks_keys, GET_COLFAM):
 
-            out[keyspace][colfam] = dict(
-                (key, unpack(columns))
-                for (key, columns) in records.iteritems())
+            if colfam not in keyspace:
+                out[keyspace][colfam] = defaultdict(lambda: dict())
+
+            for (supercol, sc_keys) in groupsort(cf_keys, GET_SUPERCOL):
+                records = client.multiget_slice(
+                    keyspace, map(GET_KEY, sc_keys),
+                    ColumnParent(colfam, supercol),
+                    SlicePredicate(slice_range=SliceRange(**kwargs)),
+                    consistency)
+
+                for (row_key, cols) in records.iteritems():
+                    cols = unpack(cols)
+                    if supercol is None:
+                        out[keyspace][colfam][row_key] = cols
+                    else:
+                        out[keyspace][colfam][row_key][supercol] = cols
+
+    return out
 
     return out
 
