@@ -329,7 +329,6 @@ class RecordTest(CassandraBaseTest):
                 is not self.object._columns['eggs'],
                 "Internal state corrupted on save.")
 
-
     def test_save_index(self):
 
         class FakeView(object):
