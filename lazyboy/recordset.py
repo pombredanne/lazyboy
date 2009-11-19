@@ -5,7 +5,6 @@
 #
 """Efficiently handle sets of Records."""
 
-from UserDict import UserDict
 from itertools import ifilter
 
 from lazyboy.key import Key
@@ -31,7 +30,7 @@ def modified(records):
     return tuple(ifilter(lambda r: r.is_modified(), records))
 
 
-class RecordSet(CassandraBase, UserDict):
+class RecordSet(CassandraBase, dict):
 
     """A set of Lazyboy records."""
 
@@ -39,7 +38,7 @@ class RecordSet(CassandraBase, UserDict):
         """Initialize the RecordSet. Returns None."""
         CassandraBase.__init__(self)
         records = self._transform(records) if records else {}
-        UserDict.__init__(self, records)
+        dict.__init__(self, records)
 
     def _transform(self, records):
         """Return a dict keyed by record key for sequence of Records."""
