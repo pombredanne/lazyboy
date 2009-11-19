@@ -66,6 +66,9 @@ class View(CassandraBase):
         chunk_size = self.chunk_size
         passes = 0
         while True:
+            # When you give Cassandra a start key, it's included in the
+            # results. We want it in the first pass, but subsequent iterations
+            # need to the count adjusted and the first record dropped.
             fudge = int(passes > 0)
             cols = client.get_slice(
                 self.key.keyspace, self.key.key, self.key,
