@@ -57,7 +57,7 @@ class MockClient(Client):
 class RecordTest(CassandraBaseTest):
 
     class Record(Record):
-        _keyspace = 'eggs',
+        _keyspace = 'sausage'
         _column_family = 'bacon'
         _required = ('eggs',)
 
@@ -213,8 +213,15 @@ class RecordTest(CassandraBaseTest):
         real_slice = lazyboy.record.iterators.slice_iterator
         try:
             lazyboy.record.iterators.slice_iterator = lambda *args: test_data
+
+            key = Key(keyspace='eggs', column_family='bacon', key='tomato')
+            self.object.make_key = lambda *args, **kwargs: key
+            self.object.load('tomato')
+            self.assert_(self.object.key is key)
+
             key = Key(keyspace='eggs', column_family='bacon', key='tomato')
             self.object.load(key)
+
         finally:
             lazyboy.record.iterators.slice_iterator = real_slice
 

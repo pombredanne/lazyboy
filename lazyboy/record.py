@@ -173,7 +173,9 @@ class Record(CassandraBase, dict):
 
     def load(self, key, consistency=None):
         """Load this record from primary key"""
-        assert isinstance(key, Key), "Bad key passed to load()"
+        if not isinstance(key, Key):
+            key = self.make_key(key)
+
         self._clean()
         consistency = consistency or self.consistency
 
