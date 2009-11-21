@@ -62,6 +62,13 @@ class Key(ColumnParent, CassandraBase):
 
 class DecoratedKey(Key):
 
+    """A key which decorates another.
+
+    Any properties set in this key override properties in the parent
+    key. Non-overriden properties changed in the parent key are
+    changed in the child key.
+    """
+
     def __init__(self, parent_key, **kwargs):
         self.parent_key = parent_key
         for (key, val) in kwargs.items():
