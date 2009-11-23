@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 #
-# A new Python file
-#
 # © 2009 Digg, Inc. All rights reserved.
 # Author: Ian Eure <ian@digg.com>
 #
+"""Unit tests for Lazyboy's CassandraBase.""
 
 import unittest
 from lazyboy.base import CassandraBase
