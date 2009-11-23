@@ -3,7 +3,7 @@
 # © 2009 Digg, Inc. All rights reserved.
 # Author: Ian Eure <ian@digg.com>
 #
-"""Unit tests for Lazyboy's CassandraBase.""
+"""Unit tests for Lazyboy's CassandraBase."""
 
 import unittest
 from lazyboy.base import CassandraBase
