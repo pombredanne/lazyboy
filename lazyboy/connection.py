@@ -6,7 +6,7 @@
 #
 
 """Lazyboy: Connections."""
-
+from __future__ import with_statement
 import random
 import os
 import threading
@@ -17,6 +17,7 @@ from thrift.transport import TTransport, TSocket
 from thrift.protocol import TBinaryProtocol
 
 import lazyboy.exceptions as exc
+from contextlib import contextmanager
 
 _SERVERS = {}
 _CLIENTS = {}
@@ -51,6 +52,50 @@ class Client(object):
         self._clients = [s for s in [self._build_server(*server.split(":")) \
                                          for server in servers] if s]
         self._current_server = random.randint(0, len(self._clients))
+
+    def get(self, *args, **kwargs):
+        with self.get_client() as client:
+            return client.get(*args, **kwargs)
+
+    def get_slice(self, *args, **kwargs):
+        with self.get_client() as client:
+            return client.get_slice(*args, **kwargs)
+
+    def multiget(self, *args, **kwargs):
+        with self.get_client() as client:
+            return client.multiget(*args, **kwargs)
+
+    def get_count(self, *args, **kwargs):
+        with self.get_client() as client:
+            return client.get_count(*args, **kwargs)
+
+    def get_key_range(self, *args, **kwargs):
+        with self.get_client() as client:
+            return client.get_key_range(*args, **kwargs)
+
+    def remove(self, *args, **kwargs):
+        with self.get_client() as client:
+            return client.remove(*args, **kwargs)
+
+    def get_string_property(self, *args, **kwargs):
+        with self.get_client() as client:
+            return client.get_string_property(*args, **kwargs)
+
+    def get_string_list_property(self, *args, **kwargs):
+        with self.get_client() as client:
+            return client.get_string_list_property(*args, **kwargs)
+
+    def describe_keyspace(self, *args, **kwargs):
+        with self.get_client() as client:
+            return client.describe_keyspace(*args, **kwargs)
+
+    def batch_insert(self, *args, **kwargs):
+        with self.get_client() as client:
+            return client.batch_insert(*args, **kwargs)
+
+    def insert(self, *args, **kwargs):
+        with self.get_client() as client:
+            return client.insert(*args, **kwargs)
 
     def _build_server(self, host, port):
         """Return a client for the given host and port."""
@@ -98,24 +143,19 @@ class Client(object):
 
         return False
 
-    def __getattr__(self, attr):
-        """Wrap every __func__ call to Cassandra client and connect()."""
-
-        def func(*args, **kwargs):
-            """Wrapper function."""
-            client = self._get_server()
-            if self._connect(client):
-                try:
-                    return getattr(client, attr).__call__(*args, **kwargs)
-                except Thrift.TException, texc:
-                    if texc.message:
-                        message = texc.message
-                    else:
-                        message = "Transport error, reconnect"
-                    client.transport.close()
-                    raise exc.ErrorThriftMessage(message)
-                except Exception:
-                    client.transport.close()
-                    raise
-
-        return func
+    @contextmanager
+    def get_client(self):
+        client = self._get_server()
+        if self._connect(client):
+            try:
+                yield client
+            except Thrift.TException, texc:
+                if texc.message:
+                    message = texc.message
+                else:
+                    message = "Transport error, reconnect"
+                client.transport.close()
+                raise exc.ErrorThriftMessage(message)
+            except Exception:
+                client.transport.close()
+                raise
