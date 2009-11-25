@@ -65,6 +65,10 @@ class Client(object):
         with self.get_client() as client:
             return client.multiget(*args, **kwargs)
 
+    def multiget_slice(self, *args, **kwargs):
+        with self.get_client() as client:
+            return client.multiget_slice(*args, **kwargs)
+
     def get_count(self, *args, **kwargs):
         with self.get_client() as client:
             return client.get_count(*args, **kwargs)
