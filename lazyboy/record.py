@@ -119,7 +119,7 @@ class Record(CassandraBase, dict):
 
     def timestamp(self):
         """Return a GMT UNIX timestamp."""
-        return int(time.mktime(time.gmtime()))
+        return int(time.time())
 
     def __setitem__(self, item, value):
         """Set an item, storing it into the _columns backing store."""

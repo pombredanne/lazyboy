@@ -463,6 +463,15 @@ class RecordTest(CassandraBaseTest):
         self.assert_(self.object.is_modified(),
                      "Altered instance is not modified.")
 
+    def test_timestamp(self):
+        """Test Record.timestamp."""
+        tstamp = self.object.timestamp()
+        self.assert_(isinstance(tstamp, int))
+        tstamp_2 = self.object.timestamp()
+        self.assert_(tstamp_2 >= tstamp)
+
+        self.assert_(abs(self.object.timestamp() - time.time()) <= 2)
+
 
 class MirroredRecordTest(unittest.TestCase):
 
