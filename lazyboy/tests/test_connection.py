@@ -50,6 +50,10 @@ class TestPools(ConnectionTest):
         client = conn.get_pool(self.pool)
         self.assert_(type(client) is conn.Client)
 
+        # Again, to cover the short-circuit conditional
+        client = conn.get_pool(self.pool)
+        self.assert_(type(client) is conn.Client)
+
         self.assertRaises(TypeError, conn.Client)
 
         self.assertRaises(ErrorCassandraClientNotFound,
