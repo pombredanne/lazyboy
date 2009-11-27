@@ -108,10 +108,10 @@ class TestClient(ConnectionTest):
 
     def test_connect(self):
 
-        def raise_(except_):
+        def raise_(except_, *args, **kwargs):
 
             def __r():
-                raise except_
+                raise except_(*args, **kwargs)
             return __r
 
         class _MockTransport(object):
@@ -137,8 +137,13 @@ class TestClient(ConnectionTest):
         self.assert_(self.client._connect(client))
         self.assert_(client.transport.calls['open'] == nopens + 1)
 
-        # Thrift Exception on connect
+        # Thrift Exception on connect (no message)
         client.transport.open = raise_(Thrift.TException)
+        self.assertRaises(ErrorThriftMessage,
+                          self.client._connect, client,)
+
+        # Thrift Exception on connect (with message)
+        client.transport.open = raise_(Thrift.TException, "Cleese")
         self.assertRaises(ErrorThriftMessage,
                           self.client._connect, client,)
 
