@@ -6,8 +6,10 @@
 #
 """Connection unit tests."""
 
+from __future__ import with_statement
 import unittest
 import time
+import types
 from contextlib import contextmanager
 
 from cassandra import Cassandra
@@ -167,6 +169,47 @@ class TestClient(ConnectionTest):
             self.assert_(res[0] is True)
             self.assert_(res[1] == ('cleese',))
             self.assert_(res[2] == {'gilliam': "Terry"})
+
+    def test_get_client(self):
+        """Test get_client."""
+        cass_client = Generic()
+        raw_server = Generic()
+        self.client._get_server = lambda: raw_server
+        self.client._connect = lambda client: True
+
+        with self.client.get_client() as clt:
+            self.assert_(clt is raw_server)
+
+        closed = []
+        try:
+            raw_server.transport = Generic()
+            raw_server.transport.close = lambda: closed.append(True)
+            with self.client.get_client() as clt:
+                raise Thrift.TException("Cleese")
+        except Exception, exc:
+            self.assert_(len(closed) == 1)
+            self.assert_(exc.message == "Cleese")
+
+        closed = []
+        try:
+            raw_server.transport = Generic()
+            raw_server.transport.close = lambda: closed.append(True)
+            with self.client.get_client() as clt:
+                raise Thrift.TException()
+        except Exception, exc:
+            self.assert_(len(closed) == 1)
+            self.assert_(exc.message != "")
+
+        closed = []
+        exc_ = Exception("Hi!")
+        try:
+            raw_server.transport = Generic()
+            raw_server.transport.close = lambda: closed.append(True)
+            with self.client.get_client() as clt:
+                raise exc_
+        except Exception, exc:
+            self.assert_(exc is exc_)
+            self.assert_(len(closed) == 1)
 
 
 if __name__ == '__main__':
