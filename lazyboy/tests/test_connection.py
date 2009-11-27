@@ -84,8 +84,8 @@ class TestClient(ConnectionTest):
         real = self.client._clients
         bad = (None, [])
         for clts in bad:
-            self.client._clients = bad
-            self.assert_(ErrorCassandraNoServersConfigured,
+            self.client._clients = clts
+            self.assertRaises(ErrorCassandraNoServersConfigured,
                          self.client._get_server)
 
         # Round-robin
