@@ -37,7 +37,7 @@ def get_pool(name):
     try:
         _CLIENTS[key] = Client(_SERVERS[name])
         return _CLIENTS[key]
-    except Exception:
+    except:
         raise exc.ErrorCassandraClientNotFound(
             "Pool `%s' is not defined." % name)
 
@@ -193,7 +193,7 @@ class Client(object):
             client = Cassandra.Client(protocol)
             client.transport = transport
             return client
-        except Exception:
+        except:
             return None
 
     def _get_server(self):
@@ -224,7 +224,7 @@ class Client(object):
                 message = "Transport error, reconnect"
             client.transport.close()
             raise exc.ErrorThriftMessage(message)
-        except Exception:
+        except:
             client.transport.close()
 
         return False
@@ -243,6 +243,6 @@ class Client(object):
                     message = "Transport error, reconnect"
                 client.transport.close()
                 raise exc.ErrorThriftMessage(message)
-            except Exception:
+            except:
                 client.transport.close()
                 raise
