@@ -77,7 +77,12 @@ class TestClient(ConnectionTest):
         srv = self.client._build_server('localhost', 1234)
         self.assert_(srv.__class__ is Cassandra.Client)
 
-        # FIXME - test exception handling
+        _tsocket = conn.TSocket.TSocket
+        conn.TSocket.TSocket = raise_
+        try:
+            self.assert_(self.client._build_server('localhost', 1234) is None)
+        finally:
+            conn.TSocket.TSocket = _tsocket
 
     def test_get_server(self):
         # Zero clients
