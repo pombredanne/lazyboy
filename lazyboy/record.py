@@ -271,6 +271,6 @@ class MirroredRecord(Record):
         assert isinstance(parent_record, Record)
         raise exc.ErrorMissingKey("Please implement a mirror_key method.")
 
-    def save(self):
+    def save(self, consistency=None):
         """Refuse to save this record."""
         raise exc.ErrorImmutable("Mirrored records are immutable.")
