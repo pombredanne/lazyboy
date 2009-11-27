@@ -54,50 +54,132 @@ class Client(object):
         self._current_server = random.randint(0, len(self._clients))
 
     def get(self, *args, **kwargs):
+        """
+        Parameters:
+        - keyspace
+        - key
+        - column_path
+        - consistency_level
+        """
         with self.get_client() as client:
             return client.get(*args, **kwargs)
 
     def get_slice(self, *args, **kwargs):
+        """
+        Parameters:
+        - keyspace
+        - key
+        - column_parent
+        - predicate
+        - consistency_level
+        """
         with self.get_client() as client:
             return client.get_slice(*args, **kwargs)
 
     def multiget(self, *args, **kwargs):
+        """
+        Parameters:
+        - keyspace
+        - keys
+        - column_path
+        - consistency_level
+        """
         with self.get_client() as client:
             return client.multiget(*args, **kwargs)
 
     def multiget_slice(self, *args, **kwargs):
+        """
+        Parameters:
+        - keyspace
+        - keys
+        - column_parent
+        - predicate
+        - consistency_level
+        """
         with self.get_client() as client:
             return client.multiget_slice(*args, **kwargs)
 
     def get_count(self, *args, **kwargs):
+        """
+        Parameters:
+        - keyspace
+        - key
+        - column_parent
+        - consistency_level
+        """
         with self.get_client() as client:
             return client.get_count(*args, **kwargs)
 
     def get_key_range(self, *args, **kwargs):
+        """
+        Parameters:
+        - keyspace
+        - column_family
+        - start
+        - finish
+        - count
+        - consistency_level
+        """
         with self.get_client() as client:
             return client.get_key_range(*args, **kwargs)
 
     def remove(self, *args, **kwargs):
+        """
+        Parameters:
+        - keyspace
+        - key
+        - column_path
+        - timestamp
+        - consistency_level
+        """
         with self.get_client() as client:
             return client.remove(*args, **kwargs)
 
     def get_string_property(self, *args, **kwargs):
+        """
+        Parameters:
+        - property
+        """
         with self.get_client() as client:
             return client.get_string_property(*args, **kwargs)
 
     def get_string_list_property(self, *args, **kwargs):
+        """
+        Parameters:
+        - property
+        """
         with self.get_client() as client:
             return client.get_string_list_property(*args, **kwargs)
 
     def describe_keyspace(self, *args, **kwargs):
+        """
+        Parameters:
+        - keyspace
+        """
         with self.get_client() as client:
             return client.describe_keyspace(*args, **kwargs)
 
     def batch_insert(self, *args, **kwargs):
+        """
+        Parameters:
+        - keyspace
+        - key
+        - cfmap
+        - consistency_level
+        """
         with self.get_client() as client:
             return client.batch_insert(*args, **kwargs)
 
     def insert(self, *args, **kwargs):
+        """
+        Parameters:
+        - keyspace
+        - key
+        - column_path
+        - value
+        - timestamp
+        - consistency_level
+        """
         with self.get_client() as client:
             return client.insert(*args, **kwargs)
 
@@ -149,6 +231,7 @@ class Client(object):
 
     @contextmanager
     def get_client(self):
+        """Yield a Cassandra client connection."""
         client = self._get_server()
         if self._connect(client):
             try:

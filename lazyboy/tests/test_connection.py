@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 #
-# Connection unit tests
-#
 # © 2009 Digg, Inc. All rights reserved.
 # Author: Ian Eure <ian@digg.com>
 # Author: Chris Goffinet <goffinet@digg.com>
 #
+"""Connection unit tests."""
 
 import unittest
 import time
+from contextlib import contextmanager
 
 from cassandra import Cassandra
 from cassandra.ttypes import *
@@ -28,13 +28,13 @@ class ConnectionTest(unittest.TestCase):
 
     def setUp(self):
         self.pool = 'testing'
-        self.__client = conn.Client
+        self._client = conn.Client
         conn.Client = MockClient
         conn._CLIENTS = {}
         conn._SERVERS = {self.pool: ['localhost:1234']}
 
     def tearDown(self):
-        conn.Client = self.__client
+        conn.Client = self._client
 
 
 class TestPools(ConnectionTest):
@@ -140,6 +140,33 @@ class TestClient(ConnectionTest):
         ncloses = client.transport.calls['close']
         self.assert_(self.client._connect(client) == False)
         self.assert_(client.transport.calls['close'] == ncloses + 1)
+
+    def test_methods(self):
+        """Test the various client methods."""
+
+        methods = filter(lambda m: m[0] != '_', dir(Cassandra.Iface))
+
+        real_client = Generic()
+
+        @contextmanager
+        def get_client():
+            yield real_client
+
+        client = self._client(['127.0.0.1:9160'])
+        client.get_client = get_client
+        dummy = lambda *args, **kwargs: (True, args, kwargs)
+
+        for method in methods:
+            self.assert_(hasattr(client, method),
+                         "Lazyboy client lacks interface method %s" % method)
+            self.assert_(callable(getattr(client, method)))
+            setattr(real_client, method, dummy)
+            res = getattr(client, method)('cleese', gilliam="Terry")
+            self.assert_(isinstance(res, tuple),
+                         "%s method failed: %s" % (method, res))
+            self.assert_(res[0] is True)
+            self.assert_(res[1] == ('cleese',))
+            self.assert_(res[2] == {'gilliam': "Terry"})
 
 
 if __name__ == '__main__':
