@@ -10,11 +10,14 @@ from __future__ import with_statement
 import random
 import os
 import threading
+import socket
+import time
 
 from cassandra import Cassandra
 from thrift import Thrift
 from thrift.transport import TTransport, TSocket
 from thrift.protocol import TBinaryProtocol
+import thrift
 
 import lazyboy.exceptions as exc
 from contextlib import contextmanager
@@ -22,11 +25,33 @@ from contextlib import contextmanager
 _SERVERS = {}
 _CLIENTS = {}
 
+def _retry_default_callback(attempt, exc):
+    """Retry an attempt five times, then give up."""
+    return attempt < 5
 
-def add_pool(name, servers):
+def retry(callback=None):
+    """Retry an operation."""
+
+    callback = callback or _retry_default_callback
+    assert callable(callback)
+
+    def __closure__(func):
+
+        def __inner__(*args, **kwargs):
+            attempt = 0
+            while True:
+                try:
+                    return func(*args, **kwargs)
+                except Exception, exc:
+                    if not callback(attempt, exc):
+                        raise exc
+                    attempt += 1
+        return __inner__
+    return __closure__
+
+def add_pool(name, servers, timeout=None, recycle=None):
     """Add a connection."""
-    _SERVERS[name] = servers
-
+    _SERVERS[name] = dict(servers=servers, timeout=timeout, recycle=recycle)
 
 def get_pool(name):
     """Return a client for the given pool name."""
@@ -35,9 +60,9 @@ def get_pool(name):
         return _CLIENTS[key]
 
     try:
-        _CLIENTS[key] = Client(_SERVERS[name])
+        _CLIENTS[key] = Client(**_SERVERS[name])
         return _CLIENTS[key]
-    except:
+    except Exception, e:
         raise exc.ErrorCassandraClientNotFound(
             "Pool `%s' is not defined." % name)
 
@@ -46,13 +71,16 @@ class Client(object):
 
     """A wrapper around the Cassandra client which load-balances."""
 
-    def __init__(self, servers):
+    def __init__(self, servers, timeout=None, recycle=None):
         """Initialize the client."""
         self._servers = servers
+        self._recycle = recycle
+        self._timeout = timeout
         self._clients = [s for s in [self._build_server(*server.split(":")) \
                                          for server in servers] if s]
         self._current_server = random.randint(0, len(self._clients))
 
+    @retry()
     def get(self, *args, **kwargs):
         """
         Parameters:
@@ -64,6 +92,7 @@ class Client(object):
         with self.get_client() as client:
             return client.get(*args, **kwargs)
 
+    @retry()
     def get_slice(self, *args, **kwargs):
         """
         Parameters:
@@ -76,6 +105,7 @@ class Client(object):
         with self.get_client() as client:
             return client.get_slice(*args, **kwargs)
 
+    @retry()
     def multiget(self, *args, **kwargs):
         """
         Parameters:
@@ -87,6 +117,7 @@ class Client(object):
         with self.get_client() as client:
             return client.multiget(*args, **kwargs)
 
+    @retry()
     def multiget_slice(self, *args, **kwargs):
         """
         Parameters:
@@ -99,6 +130,7 @@ class Client(object):
         with self.get_client() as client:
             return client.multiget_slice(*args, **kwargs)
 
+    @retry()
     def get_count(self, *args, **kwargs):
         """
         Parameters:
@@ -110,6 +142,7 @@ class Client(object):
         with self.get_client() as client:
             return client.get_count(*args, **kwargs)
 
+    @retry()
     def get_key_range(self, *args, **kwargs):
         """
         Parameters:
@@ -123,6 +156,7 @@ class Client(object):
         with self.get_client() as client:
             return client.get_key_range(*args, **kwargs)
 
+    @retry()
     def remove(self, *args, **kwargs):
         """
         Parameters:
@@ -135,6 +169,7 @@ class Client(object):
         with self.get_client() as client:
             return client.remove(*args, **kwargs)
 
+    @retry()
     def get_string_property(self, *args, **kwargs):
         """
         Parameters:
@@ -143,6 +178,7 @@ class Client(object):
         with self.get_client() as client:
             return client.get_string_property(*args, **kwargs)
 
+    @retry()
     def get_string_list_property(self, *args, **kwargs):
         """
         Parameters:
@@ -151,6 +187,7 @@ class Client(object):
         with self.get_client() as client:
             return client.get_string_list_property(*args, **kwargs)
 
+    @retry()
     def describe_keyspace(self, *args, **kwargs):
         """
         Parameters:
@@ -159,6 +196,7 @@ class Client(object):
         with self.get_client() as client:
             return client.describe_keyspace(*args, **kwargs)
 
+    @retry()
     def batch_insert(self, *args, **kwargs):
         """
         Parameters:
@@ -170,6 +208,7 @@ class Client(object):
         with self.get_client() as client:
             return client.batch_insert(*args, **kwargs)
 
+    @retry()
     def insert(self, *args, **kwargs):
         """
         Parameters:
@@ -187,13 +226,14 @@ class Client(object):
         """Return a client for the given host and port."""
         try:
             socket = TSocket.TSocket(host, int(port))
-            # socket.setTimeout(200)
+            if self._timeout:
+                socket.setTimeout(self._timeout)
             transport = TTransport.TBufferedTransport(socket)
             protocol = TBinaryProtocol.TBinaryProtocolAccelerated(transport)
             client = Cassandra.Client(protocol)
             client.transport = transport
             return client
-        except:
+        except Exception:
             return None
 
     def _get_server(self):
@@ -209,40 +249,38 @@ class Client(object):
         """Return all servers we know about."""
         return self._clients
 
-    def _connect(self, client):
+    def _connect(self):
         """Connect to Cassandra if not connected."""
-        if client.transport.isOpen():
-            return True
+
+        client = self._get_server()
+
+        if client.transport.isOpen() and self._recycle:
+            if (client.connect_time + self._recycle) > time.time():
+                return client
+            else:
+                client.transport.close()
+
+        elif client.transport.isOpen():
+            return client
 
         try:
             client.transport.open()
-            return True
-        except Thrift.TException, texc:
-            if texc.message:
-                message = texc.message
-            else:
-                message = "Transport error, reconnect"
+            client.connect_time = time.time()
+        except thrift.transport.TTransport.TTransportException, e:
             client.transport.close()
-            raise exc.ErrorThriftMessage(message)
-        except:
-            client.transport.close()
+            raise exc.ErrorThriftMessage(e.message)
 
-        return False
+        return client
 
     @contextmanager
     def get_client(self):
         """Yield a Cassandra client connection."""
-        client = self._get_server()
-        if self._connect(client):
-            try:
-                yield client
-            except Thrift.TException, texc:
-                if texc.message:
-                    message = texc.message
-                else:
-                    message = "Transport error, reconnect"
+        client = None
+        try:
+            client = self._connect()
+            yield client
+        except (socket.error, Thrift.TException), e:
+            message = e.message or "Transport error, reconnect"
+            if client:
                 client.transport.close()
-                raise exc.ErrorThriftMessage(message)
-            except:
-                client.transport.close()
-                raise
+            raise exc.ErrorThriftMessage(message)
