@@ -132,7 +132,7 @@ clean:
 	rm -rf build dist TAGS TAGS.gz digg.egg-info tmp .coverage \
 	       coverage coverage.xml docs lint.html lint.txt profile \
 	       .profile *.egg xunit.xml
-	@if test "$(OS)" = "Linux"; then fakeroot debian/rules clean; fi
+	-@if test "$(OS)" = "Linux"; then fakeroot debian/rules clean; fi
 
 
 xclean: extraclean
