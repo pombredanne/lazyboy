@@ -158,7 +158,7 @@ class TestRecordSet(unittest.TestCase):
                 self.key = self.Key()
                 self.key.key = str(uuid.uuid4())
 
-            def save(self):
+            def save(self, consistency=None):
                 self.saved = True
                 return self
 

@@ -53,35 +53,38 @@ class RecordSet(CassandraBase, dict):
         """Append a new record to the set."""
         return self.__setitem__(record.key.key, record)
 
-    def save(self):
+    def save(self, consistency=None):
         """Save all records.
 
         FIXME: This is really pretty terrible, but until we have batch
         delete and row-spanning mutations, this is as good as it can
         be. Except for SuperColumns."""
 
+        consistency = consistency or self.consistency
         records = modified(self.itervalues())
         if not valid(records):
             raise ErrorMissingField("Missing required field(s):",
                                     missing(records))
 
         for record in records:
-            record.save()
+            record.save(consistency)
         return self
 
 
 class KeyRecordSet(RecordSet):
     """A set of Records defined by record key. Records are batch loaded."""
 
-    def __init__(self, keys=None, record_class=None):
+    def __init__(self, keys=None, record_class=None, consistency=None):
         """Initialize the set."""
         record_class = record_class or Record
-        records = self._batch_load(record_class, keys) if keys else None
+        records = (self._batch_load(record_class, keys, consistency)
+                   if keys else None)
         RecordSet.__init__(self, records)
 
-    def _batch_load(self, record_class, keys):
+    def _batch_load(self, record_class, keys, consistency=None):
         """Return an iterator of records for the given keys."""
-        data = itr.multigetterator(keys, self.consistency)
+        consistency = consistency or self.consistency
+        data = itr.multigetterator(keys, consistency)
         for (keyspace, col_fams) in data.iteritems():
             for (col_fam, rows) in col_fams.iteritems():
                 for (row_key, cols) in rows.iteritems():
