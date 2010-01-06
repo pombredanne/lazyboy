@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# © 2009 Digg, Inc. All rights reserved.
+# © 2009, 2010 Digg, Inc. All rights reserved.
 # Author: Chris Goffinet <goffinet@digg.com>
 # Author: Ian Eure <ian@digg.com>
 #
@@ -268,7 +268,7 @@ class Client(object):
             client.connect_time = time.time()
         except thrift.transport.TTransport.TTransportException, e:
             client.transport.close()
-            raise exc.ErrorThriftMessage(e.message)
+            raise exc.ErrorThriftMessage(*e.args)
 
         return client
 
@@ -280,7 +280,7 @@ class Client(object):
             client = self._connect()
             yield client
         except (socket.error, Thrift.TException), e:
-            message = e.message or "Transport error, reconnect"
+            message = e.args or ("Transport error, reconnect",)
             if client:
                 client.transport.close()
-            raise exc.ErrorThriftMessage(message)
+            raise exc.ErrorThriftMessage(*message)

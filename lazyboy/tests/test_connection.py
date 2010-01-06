@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# © 2009 Digg, Inc. All rights reserved.
+# © 2009, 2010 Digg, Inc. All rights reserved.
 # Author: Ian Eure <ian@digg.com>
 # Author: Chris Goffinet <goffinet@digg.com>
 #
@@ -203,7 +203,7 @@ class TestClient(ConnectionTest):
                 raise Thrift.TException("Cleese")
         except Exception, exc:
             self.assert_(len(closed) == 1)
-            self.assert_(exc.message == "Cleese")
+            self.assert_(exc.args[0] == "Cleese")
 
         closed = []
         try:
@@ -213,7 +213,7 @@ class TestClient(ConnectionTest):
                 raise Thrift.TException()
         except Exception, exc:
             self.assert_(len(closed) == 1)
-            self.assert_(exc.message != "")
+            self.assert_(exc.args[0] != "")
 
 
 if __name__ == '__main__':
