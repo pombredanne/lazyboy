@@ -46,7 +46,7 @@ class View(CassandraBase):
         self.key = view_key
         self.record_key = record_key
         self.record_class = record_class or Record
-        self.reversed = 0
+        self.reversed = False
 
     def __repr__(self):
         return "%s: %s" % (self.__class__.__name__, self.key)
