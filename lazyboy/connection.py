@@ -271,7 +271,7 @@ class Client(object):
             client.connect_time = time.time()
         except thrift.transport.TTransport.TTransportException, ex:
             client.transport.close()
-            raise exc.ErrorThriftMessage(*e.args)
+            raise exc.ErrorThriftMessage(*(ex.args + (self._current_server,)))
 
         return client
 
@@ -286,4 +286,4 @@ class Client(object):
             message = ex.args or ("Transport error, reconnect",)
             if client:
                 client.transport.close()
-            raise exc.ErrorThriftMessage(*message)
+            raise exc.ErrorThriftMessage(*(message + (self._current_server,)))
