@@ -243,7 +243,7 @@ class Client(object):
     def _get_server(self):
         """Return the next server (round-robin) from the list."""
         if self._clients is None or len(self._clients) == 0:
-            raise exc.ErrorCassandraNoServersConfigured
+            raise exc.ErrorCassandraNoServersConfigured()
 
         next_server = self._current_server % len(self._clients)
         self._current_server += 1
