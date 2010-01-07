@@ -11,9 +11,11 @@ import random
 import os
 import threading
 import socket
+import errno
 import time
 
 from cassandra import Cassandra
+import cassandra.ttypes as cas_types
 from thrift import Thrift
 from thrift.transport import TTransport, TSocket
 from thrift.protocol import TBinaryProtocol
@@ -237,7 +239,8 @@ class Client(object):
             client = Cassandra.Client(protocol)
             client.transport = transport
             return client
-        except Exception:
+        except (Thrift.TException, cas_types.InvalidRequestException,
+                cas_types.UnavailableException):
             return None
 
     def _get_server(self):
@@ -271,7 +274,8 @@ class Client(object):
             client.connect_time = time.time()
         except thrift.transport.TTransport.TTransportException, ex:
             client.transport.close()
-            raise exc.ErrorThriftMessage(*(ex.args + (self._current_server,)))
+            raise exc.ErrorThriftMessage(
+                *(ex.message + (self._servers[self._current_server],)))
 
         return client
 
@@ -282,8 +286,25 @@ class Client(object):
         try:
             client = self._connect()
             yield client
-        except (socket.error, Thrift.TException), ex:
-            message = ex.args or ("Transport error, reconnect",)
+        except socket.error, ex:
             if client:
                 client.transport.close()
-            raise exc.ErrorThriftMessage(*(message + (self._current_server,)))
+
+            if isinstance(ex.args, tuple):
+                args = (errno.errorcode[ex.args[0]], ex.args[1])
+            else:
+                args = ex.args
+
+            args += (self._servers[self._current_server],)
+            raise exc.ErrorThriftMessage(*args)
+        except Thrift.TException, ex:
+            message = ex.message or "Transport error, reconnect"
+            if client:
+                client.transport.close()
+            raise exc.ErrorThriftMessage(message,
+                                         self._servers[self._current_server])
+        except (cas_types.NotFoundException, cas_types.UnavailableException,
+                cas_types.InvalidRequestException), ex:
+            ex.args += (self._servers[self._current_server],)
+            ex.why += " (on %s)" % self._servers[self._current_server]
+            raise ex

@@ -71,20 +71,23 @@ class TestClient(ConnectionTest):
 
     def test_build_server(self):
 
-        class ErrorFailedBuild(Exception):
-            pass
+        exc_classes = (InvalidRequestException, UnavailableException,
+                       Thrift.TException)
 
-        def raise_():
-            raise ErrorFailedBuild()
-
+        def raise_(exception):
+            def __inner__(*args, **kwargs):
+                raise exception()
+            return __inner__
 
         srv = self.client._build_server('localhost', 1234)
         self.assert_(srv.__class__ is Cassandra.Client)
 
         _tsocket = conn.TSocket.TSocket
-        conn.TSocket.TSocket = raise_
         try:
-            self.assert_(self.client._build_server('localhost', 1234) is None)
+            for exc_class in exc_classes:
+                conn.TSocket.TSocket = raise_(exc_class)
+                self.assert_(self.client._build_server('localhost', 1234)
+                             is None)
         finally:
             conn.TSocket.TSocket = _tsocket
 
