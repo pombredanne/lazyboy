@@ -177,7 +177,6 @@ class TestClient(ConnectionTest):
                          "Lazyboy client lacks interface method %s" % method)
             self.assert_(callable(getattr(client, method)))
             setattr(real_client, method, dummy)
-            print method
             res = getattr(client, method)('cleese', gilliam="Terry")
             self.assert_(isinstance(res, tuple),
                          "%s method failed: %s" % (method, res))
