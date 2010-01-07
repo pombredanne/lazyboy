@@ -101,9 +101,9 @@ class TestClient(ConnectionTest):
         fake = ['eggs', 'bacon', 'spam']
         self.client._clients = fake
         self.client._current_server = 0
-        for exp in fake * 2:
+        for exp in range(2 * len(fake)):
             srv = self.client._get_server()
-            self.assert_(srv == exp)
+            self.assert_(srv in fake)
 
     def test_list_servers(self):
         servers = self.client.list_servers()
