@@ -26,8 +26,10 @@ _SERVERS = {}
 _CLIENTS = {}
 
 def _retry_default_callback(attempt, exc):
+
     """Retry an attempt five times, then give up."""
     return attempt < 5
+
 
 def retry(callback=None):
     """Retry an operation."""
@@ -49,9 +51,11 @@ def retry(callback=None):
         return __inner__
     return __closure__
 
+
 def add_pool(name, servers, timeout=None, recycle=None):
     """Add a connection."""
     _SERVERS[name] = dict(servers=servers, timeout=timeout, recycle=recycle)
+
 
 def get_pool(name):
     """Return a client for the given pool name."""
