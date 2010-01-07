@@ -245,9 +245,8 @@ class Client(object):
         if self._clients is None or len(self._clients) == 0:
             raise exc.ErrorCassandraNoServersConfigured()
 
-        next_server = self._current_server % len(self._clients)
-        self._current_server += 1
-        return self._clients[next_server]
+        self._current_server = self._current_server % len(self._clients)
+        return self._clients[self._current_server]
 
     def list_servers(self):
         """Return all servers we know about."""
