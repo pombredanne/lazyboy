@@ -25,8 +25,8 @@ from contextlib import contextmanager
 _SERVERS = {}
 _CLIENTS = {}
 
-def _retry_default_callback(attempt, exc):
 
+def _retry_default_callback(attempt, exc_):
     """Retry an attempt five times, then give up."""
     return attempt < 5
 
@@ -44,9 +44,9 @@ def retry(callback=None):
             while True:
                 try:
                     return func(*args, **kwargs)
-                except Exception, exc:
-                    if not callback(attempt, exc):
-                        raise exc
+                except Exception, ex:
+                    if not callback(attempt, ex):
+                        raise ex
                     attempt += 1
         return __inner__
     return __closure__
@@ -66,7 +66,7 @@ def get_pool(name):
     try:
         _CLIENTS[key] = Client(**_SERVERS[name])
         return _CLIENTS[key]
-    except Exception, e:
+    except Exception:
         raise exc.ErrorCassandraClientNotFound(
             "Pool `%s' is not defined." % name)
 
@@ -229,10 +229,10 @@ class Client(object):
     def _build_server(self, host, port):
         """Return a client for the given host and port."""
         try:
-            socket = TSocket.TSocket(host, int(port))
+            socket_ = TSocket.TSocket(host, int(port))
             if self._timeout:
-                socket.setTimeout(self._timeout)
-            transport = TTransport.TBufferedTransport(socket)
+                socket_.setTimeout(self._timeout)
+            transport = TTransport.TBufferedTransport(socket_)
             protocol = TBinaryProtocol.TBinaryProtocolAccelerated(transport)
             client = Cassandra.Client(protocol)
             client.transport = transport
@@ -270,7 +270,7 @@ class Client(object):
         try:
             client.transport.open()
             client.connect_time = time.time()
-        except thrift.transport.TTransport.TTransportException, e:
+        except thrift.transport.TTransport.TTransportException, ex:
             client.transport.close()
             raise exc.ErrorThriftMessage(*e.args)
 
@@ -283,8 +283,8 @@ class Client(object):
         try:
             client = self._connect()
             yield client
-        except (socket.error, Thrift.TException), e:
-            message = e.args or ("Transport error, reconnect",)
+        except (socket.error, Thrift.TException), ex:
+            message = ex.args or ("Transport error, reconnect",)
             if client:
                 client.transport.close()
             raise exc.ErrorThriftMessage(*message)
