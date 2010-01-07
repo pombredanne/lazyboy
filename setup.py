@@ -2,7 +2,7 @@
 #
 # Lazyboy: Setup
 #
-# © 2009 Digg, Inc. All rights reserved.
+# © 2009, 2010 Digg, Inc. All rights reserved.
 # Author: Ian Eure <ian@digg.com>
 #
 
@@ -15,7 +15,7 @@ DEPS = glob.glob(os.path.dirname(os.path.abspath(__file__)) + "/deps/*")
 DEPS.append("http://github.com/ieure/python-cassandra/downloads")
 
 setup(name="Lazyboy",
-      version='0.7.5dev5',
+      version='0.7.5dev6',
       description="Object non-relational manager for Cassandra",
       url="http://github.com/digg/lazyboy/tree/master",
       packages=find_packages(),
