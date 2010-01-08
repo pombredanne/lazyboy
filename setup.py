@@ -24,7 +24,7 @@ setup(name="Lazyboy",
       author_email="ian@digg.com",
       license="Three-clause BSD",
       keywords="database cassandra",
-      install_requires=['Thrift', 'Cassandra>=0.4.0'],
+      install_requires=['Thrift', 'Cassandra==svn897307'],
       zip_safe=False,
       tests_require=['nose', 'coverage>=3.2b1'],
       dependency_links=DEPS)
