@@ -275,7 +275,7 @@ class Client(object):
         except thrift.transport.TTransport.TTransportException, ex:
             client.transport.close()
             raise exc.ErrorThriftMessage(
-                *(ex.message + (self._servers[self._current_server],)))
+                ex.message, self._servers[self._current_server])
 
         return client
 
