@@ -112,6 +112,23 @@ class Client(object):
             return client.get_slice(*args, **kwargs)
 
     @retry()
+    def get_range_slice(self, *args, **kwargs):
+        """
+        returns a subset of columns for a range of keys.
+
+        Parameters:
+        - keyspace
+        - column_parent
+        - predicate
+        - start_key
+        - finish_key
+        - row_count
+        - consistency_level
+        """
+        with self.get_client() as client:
+            return client.get_range_slice(*args, **kwargs)
+
+    @retry()
     def multiget(self, *args, **kwargs):
         """
         Parameters:
@@ -213,6 +230,17 @@ class Client(object):
         """
         with self.get_client() as client:
             return client.batch_insert(*args, **kwargs)
+
+    @retry()
+    def batch_mutate(self, *args, **kwargs):
+        """
+        Parameters:
+        - keyspace
+        - mutation_map
+        - consistency_level
+        """
+        with self.get_client() as client:
+            return client.batch_mutate(*args, **kwargs)
 
     @retry()
     def insert(self, *args, **kwargs):
