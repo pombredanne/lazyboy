@@ -47,6 +47,7 @@ class View(CassandraBase):
         self.record_key = record_key
         self.record_class = record_class or Record
         self.reversed = False
+        self.last_col
 
     def __repr__(self):
         return "%s: %s" % (self.__class__.__name__, self.key)
@@ -80,6 +81,7 @@ class View(CassandraBase):
                 raise StopIteration()
 
             for col in unpack(cols[fudge:]):
+                self.last_col = col
                 yield self.record_key.clone(key=col.value)
 
             last_col = col.name
