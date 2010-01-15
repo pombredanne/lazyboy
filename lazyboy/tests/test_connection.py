@@ -193,6 +193,8 @@ class TestClient(ConnectionTest):
         raw_server = Generic()
         self.client._get_server = lambda: raw_server
         self.client._connect = lambda: raw_server
+        self.client._servers = [raw_server]
+        self.client._current_server = 0
 
         with self.client.get_client() as clt:
             self.assert_(clt is raw_server)
@@ -203,7 +205,7 @@ class TestClient(ConnectionTest):
             raw_server.transport.close = lambda: closed.append(True)
             with self.client.get_client() as clt:
                 raise Thrift.TException("Cleese")
-        except Exception, exc:
+        except ErrorThriftMessage, exc:
             self.assert_(len(closed) == 1)
             self.assert_(exc.args[0] == "Cleese")
 
