@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# © 2009 Digg, Inc. All rights reserved.
+# © 2009, 2010 Digg, Inc. All rights reserved.
 # Author: Ian Eure <ian@digg.com>
 #
 """Lazyboy: Record."""
@@ -11,6 +11,7 @@ from itertools import ifilterfalse as filternot
 
 from cassandra.ttypes import Column, SuperColumn
 
+from lazyboy.connection import get_pool
 from lazyboy.base import CassandraBase
 from lazyboy.key import Key
 import lazyboy.iterators as iterators
@@ -117,7 +118,8 @@ class Record(CassandraBase, dict):
         """Return a printable representation of this record."""
         return "%s: %s" % (self.__class__.__name__, dict.__repr__(self))
 
-    def timestamp(self):
+    @staticmethod
+    def timestamp():
         """Return a GMT UNIX timestamp."""
         return int(time.time())
 
@@ -243,6 +245,14 @@ class Record(CassandraBase, dict):
         return (key.keyspace, key.key,
                 {key.column_family: tuple(iterators.pack(columns))},
                 consistency)
+
+    @classmethod
+    def remove_key(cls, key, consistency=None):
+        """Remove a row based on a key."""
+        consistency = consistency or cls.consistency
+        get_pool(key.keyspace).remove(key.keyspace, key.key,
+                                      key.get_path(), cls.timestamp(),
+                               consistency)
 
     def remove(self, consistency=None):
         """Remove this record from Cassandra."""
