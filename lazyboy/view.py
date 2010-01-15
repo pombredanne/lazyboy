@@ -35,7 +35,8 @@ class View(CassandraBase):
 
     """A regular view."""
 
-    def __init__(self, view_key=None, record_key=None, record_class=None):
+    def __init__(self, view_key=None, record_key=None, record_class=None,
+                 start_col=None):
         assert not view_key or isinstance(view_key, Key)
         assert not record_key or isinstance(record_key, Key)
         assert not record_class or isinstance(record_class, type)
@@ -47,7 +48,8 @@ class View(CassandraBase):
         self.record_key = record_key
         self.record_class = record_class or Record
         self.reversed = False
-        self.last_col
+        self.last_col = None
+        self.start_col = start_col
 
     def __repr__(self):
         return "%s: %s" % (self.__class__.__name__, self.key)
@@ -62,7 +64,7 @@ class View(CassandraBase):
         client = self._get_cas()
         assert isinstance(client, Client), \
             "Incorrect client instance: %s" % client.__class__
-        last_col = start_col or ""
+        last_col = start_col or self.start_col or ""
         end_col = end_col or ""
         chunk_size = self.chunk_size
         passes = 0
