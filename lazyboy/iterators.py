@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 #
-# © 2009 Digg, Inc. All rights reserved.
+# © 2009, 2010 Digg, Inc. All rights reserved.
 # Author: Ian Eure <ian@digg.com>
 #
 
 """Iterator-based Cassandra tools."""
 
-from itertools import groupby
-from operator import attrgetter
+import itertools as it
+from operator import attrgetter, itemgetter
 from collections import defaultdict
 
 from lazyboy.connection import get_pool
@@ -25,7 +25,7 @@ GET_SUPERCOL = attrgetter("super_column")
 
 def groupsort(iterable, keyfunc):
     """Return a generator which sort and groups a list."""
-    return groupby(sorted(iterable, key=keyfunc), keyfunc)
+    return it.groupby(sorted(iterable, key=keyfunc), keyfunc)
 
 
 def slice_iterator(key, consistency, **range_args):
@@ -137,3 +137,50 @@ def pack(objects):
 def unpack(records):
     """Return a generator which unpacks objects from ColumnOrSuperColumns."""
     return (corsc.column or corsc.super_column for corsc in records)
+
+
+def repeat_seq(seq, num=1):
+    """Return a seq of seqs with elements of seq repeated n times.
+
+
+    repeat_seq([0, 1, 2, 3, 4], 2) -> [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]]
+    """
+    return (it.repeat(x, num) for x in seq)
+
+
+def repeat(seq, num):
+    """Retuan seq with each element repeated n times.
+
+    repeat([0, 1, 2, 3, 4], 2) -> [0, 0, 1, 1, 2, 2, 3, 3, 4, 4]
+    """
+    return chain_iterable(repeat_seq(seq, num))
+
+
+def chain_iterable(iterables):
+    """Yield values from a seq of seqs."""
+    # from_iterable(['ABC', 'DEF']) --> A B C D E F
+    for seq in iterables:
+        for element in seq:
+            yield element
+
+
+def chunk_seq(seq, size):
+    """Return a sequence in chunks.
+
+    First, we use repeat() to create an infinitely repeating sequence
+    of numbers, repeated 3 times:
+    (0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, … n, n)
+
+    Then we zip this with the elements of the input seq:
+    ((0, a), (0, b), (0, c), (1, d), (1, e), (1, f), … (13, z))
+
+    This is passed into groupby, where the zipped seq is grouped by
+    the first item, producing (len(seq)/size) groups of elements:
+    ((0, group-0), (1, group-1), … (n, group-n))
+
+    This is then fed to imap, which extracts the group-n iterator and
+    materializes it to:
+    ((a, b, c), (d, e, f), (g, h, i), …)
+    """
+    return it.imap(lambda elt: tuple(elt[1]),
+        it.groupby(it.izip(repeat(it.count(), size), seq), itemgetter(0)))

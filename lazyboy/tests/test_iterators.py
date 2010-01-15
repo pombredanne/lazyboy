@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# © 2009 Digg, Inc. All rights reserved.
+# © 2009, 2010 Digg, Inc. All rights reserved.
 # Author: Ian Eure <ian@digg.com>
 #
 
@@ -8,7 +8,7 @@
 
 import unittest
 import types
-from pprint import pprint
+import itertools as it
 
 from lazyboy.key import Key
 import lazyboy.exceptions as exc
@@ -190,6 +190,56 @@ class SliceIteratorTest(unittest.TestCase):
 
         for obj in unpacked:
             self.assert_(isinstance(obj, ttypes.Column))
+
+
+class UtilTest(unittest.TestCase):
+
+    """Test suite for iterator utilities."""
+
+    def test_repeat_seq(self):
+        """Test repeat_seq."""
+        repeated = tuple(iterators.repeat_seq(range(10), 2))
+        self.assert_(len(repeated) == 10)
+        for (idx, elt) in enumerate(repeated):
+            elt = tuple(elt)
+            self.assert_(len(elt) == 2)
+            for x in elt:
+                self.assert_(x == idx)
+
+    def test_repeat(self):
+        """Test repeat."""
+        repeated = tuple(iterators.repeat(range(10), 2))
+        self.assert_(len(repeated) == 20)
+
+        start = 0
+        for x in range(10):
+            self.assert_(repeated[start:start + 2] == (x, x))
+            start += 2
+
+    def test_chain_iterable(self):
+        """Test chain_iterable."""
+        chain = tuple(iterators.chain_iterable(
+                (it.repeat(x, 10) for x in range(10))))
+        self.assert_(len(chain) == 100)
+
+        for x in range(10):
+            self.assert_(chain[x * 10:x * 10 + 10] == tuple(it.repeat(x, 10)))
+
+    def test_chunk_seq(self):
+        """Test chunk_seq."""
+        chunks = tuple(iterators.chunk_seq(xrange(100), 10))
+        self.assert_(len(chunks) == 10)
+        for chunk in chunks:
+            self.assert_(len(chunk) == 10)
+
+        # Make sure we get the whole seq
+        chunks = tuple(iterators.chunk_seq(xrange(10), 3))
+        self.assert_(len(chunks) == 4)
+        lens = 0
+        for chunk in chunks:
+            lens += len(chunk)
+            self.assert_(len(chunk) >= 1 and len(chunk) <= 3)
+        self.assert_(lens == 10)
 
 
 if __name__ == '__main__':
