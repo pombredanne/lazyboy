@@ -74,7 +74,7 @@ def multigetterator(keys, consistency, **range_args):
         for (colfam, cf_keys) in groupsort(ks_keys, GET_COLFAM):
 
             if colfam not in keyspace:
-                out[keyspace][colfam] = defaultdict(lambda: dict())
+                out[keyspace][colfam] = defaultdict(dict)
 
             for (supercol, sc_keys) in groupsort(cf_keys, GET_SUPERCOL):
                 records = client.multiget_slice(
