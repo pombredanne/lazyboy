@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# © 2009 Digg, Inc. All rights reserved.
+# © 2009, 2010 Digg, Inc. All rights reserved.
 # Author: Ian Eure <ian@digg.com>
 #
 """Lazyboy: Views."""
@@ -12,7 +12,7 @@ from cassandra.ttypes import SlicePredicate, SliceRange
 
 from lazyboy.key import Key
 from lazyboy.base import CassandraBase
-from lazyboy.iterators import multigetterator, unpack
+from lazyboy.iterators import multigetterator, unpack, chunk_seq
 from lazyboy.record import Record
 from lazyboy.connection import Client
 
@@ -143,19 +143,19 @@ class BatchLoadingView(View):
 
     def __iter__(self):
         """Batch load and iterate over all objects in this view."""
-        keys = tuple(self._keys())
-        recs = multigetterator(keys, self.consistency)
+        for keys in chunk_seq(self._keys(), self.chunk_size):
+            recs = multigetterator(keys, self.consistency)
 
-        if (self.record_key.keyspace not in recs
-            or self.record_key.column_family not in
-            recs[self.record_key.keyspace]):
-            raise StopIteration()
+            if (self.record_key.keyspace not in recs
+                or self.record_key.column_family not in
+                recs[self.record_key.keyspace]):
+                raise StopIteration()
 
-        data = recs[self.record_key.keyspace][self.record_key.column_family]
+            data = recs[self.record_key.keyspace][self.record_key.column_family]
 
-        for k in keys:
-            yield (self.record_class()._inject(
-                self.record_key.clone(key=k.key), data[k.key]))
+            for k in keys:
+                yield (self.record_class()._inject(
+                    self.record_key.clone(key=k.key), data[k.key]))
 
 
 class PartitionedView(object):
