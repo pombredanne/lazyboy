@@ -28,20 +28,23 @@ def groupsort(iterable, keyfunc):
     return it.groupby(sorted(iterable, key=keyfunc), keyfunc)
 
 
-def slice_iterator(key, consistency, **range_args):
-    """Return an iterator over a row."""
+def slice_iterator(key, consistency, **predicate_args):
+    """Return oan iterator over a row."""
 
-    kwargs = {'start': "", 'finish': "",
-              'count': 100000, 'reversed': 0}
-    kwargs.update(range_args)
+    predicate = SlicePredicate()
+    if 'columns' in predicate_args:
+        predicate.column_names = predicate_args['columns']
+    else:
+        args = {'start': "", 'finish': "",
+                  'count': 100000, 'reversed': 0}
+        args.update(predicate_args)
+        predicate.slice_range=SliceRange(**args)
 
     consistency = consistency or ConsistencyLevel.ONE
 
     client = get_pool(key.keyspace)
     res = client.get_slice(
-        key.keyspace, key.key, key,
-        SlicePredicate(slice_range=SliceRange(**kwargs)),
-        consistency)
+        key.keyspace, key.key, key, predicate, consistency)
 
     if not res:
         raise exc.ErrorNoSuchRecord("No record matching key %s" % key)
