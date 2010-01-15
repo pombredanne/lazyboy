@@ -185,5 +185,6 @@ def chunk_seq(seq, size):
     materializes it to:
     ((a, b, c), (d, e, f), (g, h, i), …)
     """
-    return it.imap(lambda elt: tuple(elt[1]),
-        it.groupby(it.izip(repeat(it.count(), size), seq), itemgetter(0)))
+    return it.imap(lambda elt: tuple(it.imap(itemgetter(1), elt[1])),
+                   it.groupby(it.izip(repeat(it.count(), size), seq),
+                              itemgetter(0)))

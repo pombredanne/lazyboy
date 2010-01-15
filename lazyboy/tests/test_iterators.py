@@ -227,19 +227,12 @@ class UtilTest(unittest.TestCase):
 
     def test_chunk_seq(self):
         """Test chunk_seq."""
-        chunks = tuple(iterators.chunk_seq(xrange(100), 10))
-        self.assert_(len(chunks) == 10)
+        chunks = tuple(iterators.chunk_seq("abcdefghijklmnopqrstuvwxyz", 3))
+        self.assert_(len(chunks) == 9)
         for chunk in chunks:
-            self.assert_(len(chunk) == 10)
-
-        # Make sure we get the whole seq
-        chunks = tuple(iterators.chunk_seq(xrange(10), 3))
-        self.assert_(len(chunks) == 4)
-        lens = 0
-        for chunk in chunks:
-            lens += len(chunk)
             self.assert_(len(chunk) >= 1 and len(chunk) <= 3)
-        self.assert_(lens == 10)
+            for elt in chunk:
+                self.assert_(isinstance(elt, str))
 
 
 if __name__ == '__main__':
