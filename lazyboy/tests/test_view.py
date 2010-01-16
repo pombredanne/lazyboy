@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# © 2009 Digg, Inc. All rights reserved.
+# © 2009, 2010 Digg, Inc. All rights reserved.
 # Author: Ian Eure <ian@digg.com>
 #
 """Unit tests for Lazyboy views."""
@@ -192,8 +192,10 @@ class BatchLoadingViewTest(unittest.TestCase):
         mg = view.multigetterator
 
         self.object = view.BatchLoadingView(None, Key("Eggs", "Bacon"))
-        self.object._keys = lambda: [Key("Eggs", "Bacon", x)
-                                     for x in range(25)]
+        # self.object._keys = lambda: [Key("Eggs", "Bacon", x)
+        #                              for x in range(25)]
+        self.object._cols = lambda start=None, end=None: \
+            [Column("name:%s" % x, "val:%s" % x) for x in range(25)]
 
         columns = [Column(x, x * x) for x in range(10)]
         data = {'Digg': {'Users': {}}}
