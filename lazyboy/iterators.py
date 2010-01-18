@@ -29,7 +29,7 @@ def groupsort(iterable, keyfunc):
 
 
 def slice_iterator(key, consistency, **predicate_args):
-    """Return oan iterator over a row."""
+    """Return an iterator over a row."""
 
     predicate = SlicePredicate()
     if 'columns' in predicate_args:
