@@ -111,16 +111,16 @@ class _DebugTraceFactory(type):
                             func.__name__, args, kwargs)
                         raise
 
-                    self.log.debug("%s:%s -> %s(%s, %s)", self.host, self.port,
-                                   func.__name__, args, kwargs)
-
                     end_time = time.time()
 
                     elapsed = (end_time - start_time) * 1000
-                    if elapsed >= self._slow_thresh:
-                        self.log.warn("Funcall took %dms: %s:%s -> %s(%s, %s)",
-                                      elapsed, self.host, self.port,
-                                      func.__name__, args, kwargs)
+                    log_func = (self.log.warn if elapsed >= self._slow_thresh
+                                else self.log.debug)
+
+                    log_func("%dms: %s:%s -> %s(%s, %s)",
+                             elapsed, self.host, self.port,
+                             func.__name__, args, kwargs)
+
                     return out
 
                 update_wrapper(__wrapper__, func)
@@ -137,8 +137,13 @@ class DebugTraceClient(Cassandra.Client):
 
     __metaclass__ = _DebugTraceFactory
 
-    # In milliseconds
-    _slow_thresh = 100
+    def __init__(self, *args, **kwargs):
+        """Initialize"""
+        slow_thresh = kwargs.get('slow_thresh', 100)
+        if 'slow_thresh' in kwargs:
+            del kwargs['slow_thresh']
+        Cassandra.Client.__init__(self, *args, **kwargs)
+        self._slow_thresh = slow_thresh
 
 
 class Client(object):
