@@ -75,7 +75,6 @@ class View(CassandraBase):
             # results. We want it in the first pass, but subsequent iterations
             # need to the count adjusted and the first record dropped.
             fudge = int(passes > 0)
-            print "\nslice %d" % self.chunk_size * passes
             cols = client.get_slice(
                 self.key.keyspace, self.key.key, self.key,
                 SlicePredicate(slice_range=SliceRange(
@@ -164,13 +163,9 @@ class BatchLoadingView(View):
 
         cols = [True]
         fetched = 0
-        total = len(self)
         while len(cols) > 0:
             cols = tuple(islice(self._cols(), self.chunk_size))
             fetched += len(cols)
-            print self.last_col
-            print
-            print "%d/%d" % (fetched, total)
             keys = tuple(self.make_key(col) for col in cols)
             recs = multigetterator(keys, self.consistency)
 
