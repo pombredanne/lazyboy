@@ -79,7 +79,7 @@ class _DebugTraceFactory(type):
 
     """A factory for making debug-tracing clients."""
 
-    def __new__(cls, name, bases, dct):
+    def __new__(mcs, name, bases, dct):
         """Create a new tracing client class."""
         assert len(bases) == 1, "Sorry, we don't do multiple inheritance."
         new_class = type(name, bases, dct)
@@ -98,6 +98,7 @@ class _DebugTraceFactory(type):
 
             def wrap(func):
                 """Return a new wrapper for a function"""
+
                 def __wrapper__(self, *args, **kwargs):
                     """A funcall wrapper."""
                     start_time = time.time()
@@ -132,7 +133,7 @@ class _DebugTraceFactory(type):
 
 class DebugTraceClient(Cassandra.Client):
 
-    """A client with debug tracing"""
+    """A client with debug tracing and slow query logging."""
 
     __metaclass__ = _DebugTraceFactory
 
@@ -155,6 +156,89 @@ class Client(object):
                          [self._build_server(class_, *server.split(":"))
                           for server in servers] if s]
         self._current_server = random.randint(0, len(self._clients))
+
+    def _build_server(self, class_, host, port, **conn_args):
+        """Return a client for the given host and port."""
+        try:
+            socket_ = TSocket.TSocket(host, int(port))
+            if self._timeout:
+                socket_.setTimeout(self._timeout)
+            transport = TTransport.TBufferedTransport(socket_)
+            protocol = TBinaryProtocol.TBinaryProtocolAccelerated(transport)
+            client = class_(protocol, **conn_args)
+            client.transport = transport
+            setattr(client, 'host', host)
+            setattr(client, 'port', port)
+            return client
+        except (Thrift.TException, cas_types.InvalidRequestException,
+                cas_types.UnavailableException):
+            return None
+
+    def _get_server(self):
+        """Return the next server (round-robin) from the list."""
+        if self._clients is None or len(self._clients) == 0:
+            raise exc.ErrorCassandraNoServersConfigured()
+
+        self._current_server = self._current_server % len(self._clients)
+        return self._clients[self._current_server]
+
+    def list_servers(self):
+        """Return all servers we know about."""
+        return self._clients
+
+    def _connect(self):
+        """Connect to Cassandra if not connected."""
+
+        client = self._get_server()
+
+        if client.transport.isOpen() and self._recycle:
+            if (client.connect_time + self._recycle) > time.time():
+                return client
+            else:
+                client.transport.close()
+
+        elif client.transport.isOpen():
+            return client
+
+        try:
+            client.transport.open()
+            client.connect_time = time.time()
+        except thrift.transport.TTransport.TTransportException, ex:
+            client.transport.close()
+            raise exc.ErrorThriftMessage(
+                ex.message, self._servers[self._current_server])
+
+        return client
+
+    @contextmanager
+    def get_client(self):
+        """Yield a Cassandra client connection."""
+        client = None
+        try:
+            client = self._connect()
+            yield client
+        except socket.error, ex:
+            if client:
+                client.transport.close()
+
+            if isinstance(ex.args, tuple):
+                args = (errno.errorcode[ex.args[0]], ex.args[1])
+            else:
+                args = ex.args
+
+            args += (self._servers[self._current_server],)
+            raise exc.ErrorThriftMessage(*args)
+        except Thrift.TException, ex:
+            message = ex.message or "Transport error, reconnect"
+            if client:
+                client.transport.close()
+            raise exc.ErrorThriftMessage(message,
+                                         self._servers[self._current_server])
+        except (cas_types.NotFoundException, cas_types.UnavailableException,
+                cas_types.InvalidRequestException), ex:
+            ex.args += (self._servers[self._current_server],)
+            ex.why += " (on %s)" % self._servers[self._current_server]
+            raise ex
 
     @retry()
     def get(self, *args, **kwargs):
@@ -325,86 +409,3 @@ class Client(object):
         """
         with self.get_client() as client:
             return client.insert(*args, **kwargs)
-
-    def _build_server(self, class_, host, port):
-        """Return a client for the given host and port."""
-        try:
-            socket_ = TSocket.TSocket(host, int(port))
-            if self._timeout:
-                socket_.setTimeout(self._timeout)
-            transport = TTransport.TBufferedTransport(socket_)
-            protocol = TBinaryProtocol.TBinaryProtocolAccelerated(transport)
-            client = class_(protocol)
-            client.transport = transport
-            setattr(client, 'host', host)
-            setattr(client, 'port', port)
-            return client
-        except (Thrift.TException, cas_types.InvalidRequestException,
-                cas_types.UnavailableException):
-            return None
-
-    def _get_server(self):
-        """Return the next server (round-robin) from the list."""
-        if self._clients is None or len(self._clients) == 0:
-            raise exc.ErrorCassandraNoServersConfigured()
-
-        self._current_server = self._current_server % len(self._clients)
-        return self._clients[self._current_server]
-
-    def list_servers(self):
-        """Return all servers we know about."""
-        return self._clients
-
-    def _connect(self):
-        """Connect to Cassandra if not connected."""
-
-        client = self._get_server()
-
-        if client.transport.isOpen() and self._recycle:
-            if (client.connect_time + self._recycle) > time.time():
-                return client
-            else:
-                client.transport.close()
-
-        elif client.transport.isOpen():
-            return client
-
-        try:
-            client.transport.open()
-            client.connect_time = time.time()
-        except thrift.transport.TTransport.TTransportException, ex:
-            client.transport.close()
-            raise exc.ErrorThriftMessage(
-                ex.message, self._servers[self._current_server])
-
-        return client
-
-    @contextmanager
-    def get_client(self):
-        """Yield a Cassandra client connection."""
-        client = None
-        try:
-            client = self._connect()
-            yield client
-        except socket.error, ex:
-            if client:
-                client.transport.close()
-
-            if isinstance(ex.args, tuple):
-                args = (errno.errorcode[ex.args[0]], ex.args[1])
-            else:
-                args = ex.args
-
-            args += (self._servers[self._current_server],)
-            raise exc.ErrorThriftMessage(*args)
-        except Thrift.TException, ex:
-            message = ex.message or "Transport error, reconnect"
-            if client:
-                client.transport.close()
-            raise exc.ErrorThriftMessage(message,
-                                         self._servers[self._current_server])
-        except (cas_types.NotFoundException, cas_types.UnavailableException,
-                cas_types.InvalidRequestException), ex:
-            ex.args += (self._servers[self._current_server],)
-            ex.why += " (on %s)" % self._servers[self._current_server]
-            raise ex
