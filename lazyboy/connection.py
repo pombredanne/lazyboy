@@ -85,10 +85,6 @@ class _DebugTraceFactory(type):
         assert len(bases) == 1, "Sorry, we don't do multiple inheritance."
         new_class = type(name, bases, dct)
 
-        setattr(new_class, 'log', logging.getLogger(name))
-        if not hasattr(new_class, '_slow_thresh'):
-            setattr(new_class, '_slow_thresh', 100)
-
         base_class = bases[0]
         for attrname in dir(base_class):
             attr = getattr(base_class, attrname)
