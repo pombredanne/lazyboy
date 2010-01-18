@@ -79,14 +79,15 @@ class TestClient(ConnectionTest):
                 raise exception()
             return __inner__
 
-        srv = self.client._build_server('localhost', 1234)
-        self.assert_(srv.__class__ is Cassandra.Client)
+        cls = Cassandra.Client
+        srv = self.client._build_server(cls, 'localhost', 1234)
+        self.assert_(isinstance(srv, Cassandra.Client))
 
         _tsocket = conn.TSocket.TSocket
         try:
             for exc_class in exc_classes:
                 conn.TSocket.TSocket = raise_(exc_class)
-                self.assert_(self.client._build_server('localhost', 1234)
+                self.assert_(self.client._build_server(cls, 'localhost', 1234)
                              is None)
         finally:
             conn.TSocket.TSocket = _tsocket

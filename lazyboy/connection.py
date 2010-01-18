@@ -7,6 +7,8 @@
 
 """Lazyboy: Connections."""
 from __future__ import with_statement
+from functools import update_wrapper
+import logging
 import random
 import os
 import threading
@@ -73,17 +75,85 @@ def get_pool(name):
             "Pool `%s' is not defined." % name)
 
 
+class _DebugTraceFactory(type):
+
+    """A factory for making debug-tracing clients."""
+
+    def __new__(cls, name, bases, dct):
+        """Create a new tracing client class."""
+        assert len(bases) == 1, "Sorry, we don't do multiple inheritance."
+        new_class = type(name, bases, dct)
+
+        setattr(new_class, 'log', logging.getLogger(name))
+        if not hasattr(new_class, '_slow_thresh'):
+            setattr(new_class, '_slow_thresh', 100)
+
+        base_class = bases[0]
+        for attrname in dir(base_class):
+            attr = getattr(base_class, attrname)
+
+            if (attrname.startswith('__') or attrname.startswith('send_')
+                or attrname.startswith('recv_') or not callable(attr)):
+                continue
+
+            def wrap(func):
+                """Return a new wrapper for a function"""
+                def __wrapper__(self, *args, **kwargs):
+                    """A funcall wrapper."""
+                    start_time = time.time()
+                    try:
+                        out = func(self, *args, **kwargs)
+                    except Exception, ex:
+                        self.log.error(
+                            "Caught %s while calling: %s:%s -> %s(%s, %s)",
+                            ex.__class__.__name__, self.host, self.port,
+                            func.__name__, args, kwargs)
+                        raise
+
+                    self.log.debug("%s:%s -> %s(%s, %s)", self.host, self.port,
+                                   func.__name__, args, kwargs)
+
+                    end_time = time.time()
+
+                    elapsed = (end_time - start_time) * 1000
+                    if elapsed >= self._slow_thresh:
+                        self.log.warn("Funcall took %dms: %s:%s -> %s(%s, %s)",
+                                      elapsed, self.host, self.port,
+                                      func.__name__, args, kwargs)
+                    return out
+
+                update_wrapper(__wrapper__, func)
+                return __wrapper__
+
+            setattr(new_class, attrname, wrap(attr))
+
+        return new_class
+
+
+class DebugTraceClient(Cassandra.Client):
+
+    """A client with debug tracing"""
+
+    __metaclass__ = _DebugTraceFactory
+
+    # In milliseconds
+    _slow_thresh = 100
+
+
 class Client(object):
 
     """A wrapper around the Cassandra client which load-balances."""
 
-    def __init__(self, servers, timeout=None, recycle=None):
+    def __init__(self, servers, timeout=None, recycle=None, debug=False):
         """Initialize the client."""
         self._servers = servers
         self._recycle = recycle
         self._timeout = timeout
-        self._clients = [s for s in [self._build_server(*server.split(":")) \
-                                         for server in servers] if s]
+
+        class_ = DebugTraceClient if debug else Cassandra.Client
+        self._clients = [s for s in
+                         [self._build_server(class_, *server.split(":"))
+                          for server in servers] if s]
         self._current_server = random.randint(0, len(self._clients))
 
     @retry()
@@ -256,7 +326,7 @@ class Client(object):
         with self.get_client() as client:
             return client.insert(*args, **kwargs)
 
-    def _build_server(self, host, port):
+    def _build_server(self, class_, host, port):
         """Return a client for the given host and port."""
         try:
             socket_ = TSocket.TSocket(host, int(port))
@@ -264,8 +334,10 @@ class Client(object):
                 socket_.setTimeout(self._timeout)
             transport = TTransport.TBufferedTransport(socket_)
             protocol = TBinaryProtocol.TBinaryProtocolAccelerated(transport)
-            client = Cassandra.Client(protocol)
+            client = class_(protocol)
             client.transport = transport
+            setattr(client, 'host', host)
+            setattr(client, 'port', port)
             return client
         except (Thrift.TException, cas_types.InvalidRequestException,
                 cas_types.UnavailableException):
