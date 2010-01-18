@@ -38,7 +38,7 @@ class View(CassandraBase):
     """A regular view."""
 
     def __init__(self, view_key=None, record_key=None, record_class=None,
-                 start_col=None):
+                 start_col=None, exclusive=False):
         assert not view_key or isinstance(view_key, Key)
         assert not record_key or isinstance(record_key, Key)
         assert not record_class or isinstance(record_class, type)
@@ -52,6 +52,7 @@ class View(CassandraBase):
         self.reversed = False
         self.last_col = None
         self.start_col = start_col
+        self.exclusive = exclusive
 
     def __repr__(self):
         return "%s: %s" % (self.__class__.__name__, self.key)
@@ -74,7 +75,8 @@ class View(CassandraBase):
             # When you give Cassandra a start key, it's included in the
             # results. We want it in the first pass, but subsequent iterations
             # need to the count adjusted and the first record dropped.
-            fudge = int(passes > 0)
+            fudge = 1 if self.exclusive else int(passes > 0)
+
             cols = client.get_slice(
                 self.key.keyspace, self.key.key, self.key,
                 SlicePredicate(slice_range=SliceRange(
