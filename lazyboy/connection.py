@@ -137,10 +137,14 @@ class DebugTraceClient(Cassandra.Client):
     def __init__(self, *args, **kwargs):
         """Initialize"""
         slow_thresh = kwargs.get('slow_thresh', 100)
+        log = kwargs.get('log', logging.getLogger(self.__class__.__name__))
         if 'slow_thresh' in kwargs:
             del kwargs['slow_thresh']
+        if 'log' in kwargs:
+            del kwargs['log']
         Cassandra.Client.__init__(self, *args, **kwargs)
         self._slow_thresh = slow_thresh
+        self.log = log
 
 
 class Client(object):
