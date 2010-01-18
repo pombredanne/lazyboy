@@ -56,9 +56,10 @@ def retry(callback=None):
     return __closure__
 
 
-def add_pool(name, servers, timeout=None, recycle=None):
+def add_pool(name, servers, timeout=None, recycle=None, **kwargs):
     """Add a connection."""
-    _SERVERS[name] = dict(servers=servers, timeout=timeout, recycle=recycle)
+    _SERVERS[name] = dict(servers=servers, timeout=timeout, recycle=recycle,
+                          **kwargs)
 
 
 def get_pool(name):
@@ -150,7 +151,8 @@ class Client(object):
 
     """A wrapper around the Cassandra client which load-balances."""
 
-    def __init__(self, servers, timeout=None, recycle=None, debug=False):
+    def __init__(self, servers, timeout=None, recycle=None, debug=False,
+                 **conn_args):
         """Initialize the client."""
         self._servers = servers
         self._recycle = recycle
@@ -158,7 +160,8 @@ class Client(object):
 
         class_ = DebugTraceClient if debug else Cassandra.Client
         self._clients = [s for s in
-                         [self._build_server(class_, *server.split(":"))
+                         [self._build_server(class_, *server.split(":"),
+                                             **conn_args)
                           for server in servers] if s]
         self._current_server = random.randint(0, len(self._clients))
 
