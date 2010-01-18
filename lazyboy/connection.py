@@ -98,7 +98,7 @@ class _DebugTraceFactory(type):
                 continue
 
             def wrap(func):
-                """Return a new wrapper for a function"""
+                """Returns a new wrapper for a function."""
 
                 def __wrapper__(self, *args, **kwargs):
                     """A funcall wrapper."""
