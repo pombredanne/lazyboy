@@ -154,9 +154,11 @@ class BatchLoadingView(View):
 
     """A view which loads records in bulk."""
 
-    def __init__(self, view_key=None, record_key=None, record_class=None):
+    def __init__(self, view_key=None, record_key=None, record_class=None,
+                 start_col=None, exclusive=False):
         """Initialize the view, setting the chunk_size to a large value."""
-        View.__init__(self, view_key, record_key, record_class)
+        View.__init__(self, view_key, record_key, record_class, start_col,
+                      exclusive)
         self.chunk_size = 5000
 
     def __iter__(self):
