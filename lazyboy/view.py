@@ -180,10 +180,14 @@ class BatchLoadingView(View):
 
             data = recs[self.record_key.keyspace][self.record_key.column_family]
 
+            record_data = data[k.key]
+            if k.is_super():
+                record_data = record_data[k.super_column]
+
             for (index, k) in enumerate(keys):
                 self.last_col = cols[index]
                 yield (self.record_class()._inject(
-                        self.record_key.clone(key=k.key), data[k.key]))
+                        self.record_key.clone(key=k.key), record_data))
 
 
 class PartitionedView(object):
