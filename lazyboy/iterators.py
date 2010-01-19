@@ -36,7 +36,7 @@ def slice_iterator(key, consistency, **predicate_args):
         predicate.column_names = predicate_args['columns']
     else:
         args = {'start': "", 'finish': "",
-                  'count': 100000, 'reversed': 0}
+                  'count': 100000, 'reversed': False}
         args.update(predicate_args)
         predicate.slice_range=SliceRange(**args)
 
@@ -62,7 +62,7 @@ def multigetterator(keys, consistency, **range_args):
     require more requests.
     """
     kwargs = {'start': "", 'finish': "",
-              'count': 100000, 'reversed': 0}
+              'count': 100000, 'reversed': False}
     kwargs.update(range_args)
     predicate = SlicePredicate(slice_range=SliceRange(**kwargs))
     consistency = consistency or ConsistencyLevel.ONE
