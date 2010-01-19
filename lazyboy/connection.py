@@ -128,23 +128,23 @@ class _DebugTraceFactory(type):
         return new_class
 
 
-class DebugTraceClient(Cassandra.Client):
+# class DebugTraceClient(Cassandra.Client):
 
-    """A client with debug tracing and slow query logging."""
+#     """A client with debug tracing and slow query logging."""
 
-    __metaclass__ = _DebugTraceFactory
+#     __metaclass__ = _DebugTraceFactory
 
-    def __init__(self, *args, **kwargs):
-        """Initialize"""
-        slow_thresh = kwargs.get('slow_thresh', 100)
-        log = kwargs.get('log', logging.getLogger(self.__class__.__name__))
-        if 'slow_thresh' in kwargs:
-            del kwargs['slow_thresh']
-        if 'log' in kwargs:
-            del kwargs['log']
-        Cassandra.Client.__init__(self, *args, **kwargs)
-        self._slow_thresh = slow_thresh
-        self.log = log
+#     def __init__(self, *args, **kwargs):
+#         """Initialize"""
+#         slow_thresh = kwargs.get('slow_thresh', 100)
+#         log = kwargs.get('log', logging.getLogger(self.__class__.__name__))
+#         if 'slow_thresh' in kwargs:
+#             del kwargs['slow_thresh']
+#         if 'log' in kwargs:
+#             del kwargs['log']
+#         Cassandra.Client.__init__(self, *args, **kwargs)
+#         self._slow_thresh = slow_thresh
+#         self.log = log
 
 
 class Client(object):
@@ -158,7 +158,8 @@ class Client(object):
         self._recycle = recycle
         self._timeout = timeout
 
-        class_ = DebugTraceClient if debug else Cassandra.Client
+        # class_ = DebugTraceClient if debug else Cassandra.Client
+        class_ = Cassandra.Client
         self._clients = [s for s in
                          [self._build_server(class_, *server.split(":"),
                                              **conn_args)
