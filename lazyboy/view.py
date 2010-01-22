@@ -88,8 +88,8 @@ class View(CassandraBase):
 
             for col in unpack(cols[fudge:]):
                 yield col
+                last_col = col.name
 
-            last_col = col.name
             passes += 1
 
             if len(cols) < self.chunk_size:
