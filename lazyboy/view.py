@@ -168,7 +168,7 @@ class BatchLoadingView(View):
         cols = [True]
         fetched = 0
         while len(cols) > 0:
-            cols = tuple(islice(self._cols(), self.chunk_size))
+            cols = tuple(islice(all_cols, self.chunk_size))
             fetched += len(cols)
             keys = tuple(self.make_key(col) for col in cols)
             recs = multigetterator(keys, self.consistency)
