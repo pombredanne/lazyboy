@@ -221,5 +221,28 @@ class TestClient(ConnectionTest):
             self.assert_(exc.args[0] != "")
 
 
+class TestRetry(unittest.TestCase):
+
+    """Test retry logic."""
+
+    def test_retry_default_callback(self):
+        """Make sure retry_default_callback works."""
+        for x in range(conn.RETRY_ATTEMPTS):
+            self.assert_(conn._retry_default_callback(x, None))
+
+        self.assert_(not conn._retry_default_callback(x + 1, None))
+
+    def test_retry(self):
+        """Test retry."""
+        retries = []
+        def bad_func():
+            retries.append(True)
+            raise Exception("Whoops.")
+
+        retry_func = conn.retry()(bad_func)
+        self.assertRaises(Exception, retry_func)
+        self.assert_(len(retries) == conn.RETRY_ATTEMPTS)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -28,11 +28,11 @@ from contextlib import contextmanager
 
 _SERVERS = {}
 _CLIENTS = {}
-
+RETRY_ATTEMPTS = 5
 
 def _retry_default_callback(attempt, exc_):
     """Retry an attempt five times, then give up."""
-    return attempt < 5
+    return attempt < RETRY_ATTEMPTS
 
 
 def retry(callback=None):
@@ -44,7 +44,7 @@ def retry(callback=None):
     def __closure__(func):
 
         def __inner__(*args, **kwargs):
-            attempt = 0
+            attempt = 1
             while True:
                 try:
                     return func(*args, **kwargs)
