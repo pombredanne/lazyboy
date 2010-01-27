@@ -15,7 +15,7 @@ DEPS = glob.glob(os.path.dirname(os.path.abspath(__file__)) + "/deps/*")
 DEPS.append("http://github.com/ieure/python-cassandra/downloads")
 
 setup(name="Lazyboy",
-      version='0.7.5dev24',
+      version='0.7.5dev25',
       description="Object non-relational manager for Cassandra",
       url="http://github.com/digg/lazyboy/tree/master",
       packages=find_packages(),
