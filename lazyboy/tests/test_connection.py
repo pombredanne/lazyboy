@@ -10,6 +10,7 @@ from __future__ import with_statement
 import unittest
 import time
 import types
+import logging
 from contextlib import contextmanager
 
 from cassandra import Cassandra
@@ -20,6 +21,7 @@ from thrift.transport import TSocket
 import lazyboy.connection as conn
 from lazyboy.exceptions import *
 from test_record import MockClient
+from lazyboy.util import save, raises
 
 
 class Generic(object):
@@ -242,6 +244,85 @@ class TestRetry(unittest.TestCase):
         retry_func = conn.retry()(bad_func)
         self.assertRaises(Exception, retry_func)
         self.assert_(len(retries) == conn.RETRY_ATTEMPTS)
+
+
+class DebugTraceClientTest(unittest.TestCase):
+
+    """Test the DebugTraceClient."""
+
+    def test_init(self):
+        with save(conn.DebugTraceClient, ('__metaclass__',)):
+            del conn.DebugTraceClient.__metaclass__
+            logger = logging.getLogger("TestCase")
+            client = conn.DebugTraceClient(None, slow_thresh=150,
+                                           log=logger)
+            self.assert_(isinstance(client, Cassandra.Client))
+            self.assert_(hasattr(client, 'log'))
+            self.assert_(isinstance(client.log, logging.Logger))
+            self.assert_(client.log is logger)
+            self.assert_(hasattr(client, '_slow_thresh'))
+            self.assert_(client._slow_thresh == 150)
+
+
+class DebugTraceFactoryTest(unittest.TestCase):
+
+    """Test DebugTraceFactory."""
+
+    def setUp(self):
+        Cassandra.Iface.raises = raises(Exception)
+
+    def tearDown(self):
+        del Cassandra.Iface.raises
+
+    def test_multiple_inherit_exception(self):
+        """Make sure we get an exception in multi-inherit cases."""
+        TypeA = type('TypeA', (), {})
+        TypeB = type('TypeB', (), {})
+
+        mcs = conn._DebugTraceFactory
+        self.assertRaises(AssertionError, mcs.__new__,
+                          mcs, 'TypeC', (TypeA, TypeB), {})
+
+    def test_trace_factory(self):
+        """Make sure the trace factory works as advertised."""
+
+        class Tracer(Cassandra.Iface):
+            """Dummy class for testing the tracer."""
+
+            __metaclass__ = conn._DebugTraceFactory
+
+
+        for name in dir(Tracer):
+            if name.startswith('__'):
+                continue
+
+            self.assert_(getattr(Tracer, name) != getattr(Cassandra.Iface, name),
+                         "Child class shares attr %s" % name)
+
+
+        error, warn, debug = [], [], []
+
+        fake_log = type('FakeLog', (logging.Logger, object),
+                        {'__init__': lambda self: None,
+                         'warn': lambda self, *args: warn.append(args),
+                         'debug': lambda self, *args: debug.append(args),
+                         'error': lambda self, *args: error.append(args)})
+
+        tr = Tracer()
+        tr._slow_thresh = 0
+        tr.log = fake_log()
+        tr.host, tr.port = '127.0.0.1', 1337
+
+        tr.get_string_property("Foo")
+        self.assert_(len(warn) == 1)
+
+        tr._slow_thresh = 100
+        tr.get_string_property("Foo")
+        self.assert_(len(warn) == 1)
+        self.assert_(len(debug) == 1)
+
+        self.assertRaises(Exception, tr.raises)
+        self.assert_(len(error) == 1)
 
 
 if __name__ == '__main__':
