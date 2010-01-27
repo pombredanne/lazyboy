@@ -11,10 +11,12 @@ import unittest
 import time
 import types
 import logging
+import socket
 from contextlib import contextmanager
 
 from cassandra import Cassandra
 from cassandra.ttypes import *
+from thrift.transport.TTransport import TTransportException
 from thrift import Thrift
 from thrift.transport import TSocket
 
@@ -26,6 +28,18 @@ from lazyboy.util import save, raises
 
 class Generic(object):
     pass
+
+
+class _MockTransport(object):
+
+    def __init__(self, *args, **kwargs):
+        self.calls = {'open': 0, 'close': 0}
+
+    def open(self):
+        self.calls['open'] += 1
+
+    def close(self):
+        self.calls['close'] += 1
 
 
 class ConnectionTest(unittest.TestCase):
@@ -76,23 +90,21 @@ class TestClient(ConnectionTest):
         exc_classes = (InvalidRequestException, UnavailableException,
                        Thrift.TException)
 
-        def raise_(exception):
-            def __inner__(*args, **kwargs):
-                raise exception()
-            return __inner__
-
         cls = Cassandra.Client
         srv = self.client._build_server(cls, 'localhost', 1234)
         self.assert_(isinstance(srv, Cassandra.Client))
 
-        _tsocket = conn.TSocket.TSocket
-        try:
+        self.client._timeout = 250
+        srv = self.client._build_server(cls, 'localhost', 1234)
+        self.assert_(srv._iprot.trans._TBufferedTransport__trans._timeout ==
+                     self.client._timeout * .001)
+        self.assert_(isinstance(srv, Cassandra.Client))
+
+        with save(conn.TSocket, ('TSocket',)):
             for exc_class in exc_classes:
-                conn.TSocket.TSocket = raise_(exc_class)
+                conn.TSocket.TSocket = raises(exc_class)
                 self.assert_(self.client._build_server(cls, 'localhost', 1234)
                              is None)
-        finally:
-            conn.TSocket.TSocket = _tsocket
 
     def test_get_server(self):
         # Zero clients
@@ -117,51 +129,56 @@ class TestClient(ConnectionTest):
         self.assert_(self.client._clients == servers)
 
     def test_connect(self):
+        client = self.client._get_server()
+        self.client._get_server = lambda: client
 
-        def raise_(except_, *args, **kwargs):
+        # Already connected
+        client.transport = _MockTransport()
+        client.transport.isOpen = lambda: True
+        self.assert_(self.client._connect())
 
-            def __r():
-                raise except_(*args, **kwargs)
-            return __r
+        # Not connected, no error
+        nopens = client.transport.calls['open']
+        with save(client.transport, ('isOpen',)):
+            client.transport.isOpen = lambda: False
+            self.assert_(self.client._connect())
+            self.assert_(client.transport.calls['open'] == nopens + 1)
 
-        class _MockTransport(object):
+        # Thrift Exception on connect - trapped
+        ncloses = client.transport.calls['close']
+        with save(client.transport, ('isOpen', 'open')):
+            client.transport.isOpen = lambda: False
+            client.transport.open = raises(TTransportException)
+            self.assertRaises(ErrorThriftMessage, self.client._connect)
+            self.assert_(client.transport.calls['close'] == ncloses +1)
 
-            def __init__(self, *args, **kwargs):
-                self.calls = {'open': 0, 'close': 0}
+        # Other exception on connect should be ignored
+        with save(client.transport, ('isOpen', 'open')):
+            client.transport.isOpen = lambda: False
+            client.transport.open = raises(Exception)
+            ncloses = client.transport.calls['close']
+            self.assertRaises(Exception, self.client._connect)
 
-            def open(self):
-                self.calls['open'] += 1
+        # Connection recycling - reuse same connection
+        nopens = client.transport.calls['open']
+        ncloses = client.transport.calls['close']
+        conn = self.client._connect()
+        self.client._recycle = 60
+        client.connect_time = time.time()
+        self.assert_(conn is self.client._connect())
+        self.assert_(client.transport.calls['open'] == nopens)
+        self.assert_(client.transport.calls['open'] == ncloses)
 
-            def close(self):
-                self.calls['close'] += 1
+        # Recycling - reconnect
+        nopens = client.transport.calls['open']
+        ncloses = client.transport.calls['close']
+        conn = self.client._connect()
+        self.client._recycle = 60
+        client.connect_time = 0
+        self.assert_(conn is self.client._connect())
+        self.assert_(client.transport.calls['open'] == nopens + 1)
+        self.assert_(client.transport.calls['close'] == ncloses + 1)
 
-        # # Already connected
-        # client = self.client._clients[0]
-        # client.transport = _MockTransport()
-        # client.transport.isOpen = lambda: True
-        # self.assert_(self.client._connect())
-        #
-        # # Not connected, no error
-        # client.transport.isOpen = lambda: False
-        # nopens = client.transport.calls['open']
-        # self.assert_(self.client._connect())
-        # self.assert_(client.transport.calls['open'] == nopens + 1)
-
-        # Thrift Exception on connect (no message)
-        # client.transport.open = raise_(Thrift.TException)
-        # self.assertRaises(ErrorThriftMessage,
-        #                   self.client._connect)
-        #
-        # # Thrift Exception on connect (with message)
-        # client.transport.open = raise_(Thrift.TException, "Cleese")
-        # self.assertRaises(ErrorThriftMessage,
-        #                   self.client._connect)
-        #
-        # # Other exception on connect
-        # client.transport.open = raise_(Exception)
-        # ncloses = client.transport.calls['close']
-        # self.assert_(self.client._connect() == False)
-        # self.assert_(client.transport.calls['close'] == ncloses + 1)
 
     def test_methods(self):
         """Test the various client methods."""
@@ -199,8 +216,21 @@ class TestClient(ConnectionTest):
         self.client._servers = [raw_server]
         self.client._current_server = 0
 
+        transport = _MockTransport()
+        raw_server.transport = transport
+
         with self.client.get_client() as clt:
             self.assert_(clt is raw_server)
+
+        # Socket error handling
+        ncloses = transport.calls['close']
+        try:
+            with self.client.get_client() as clt:
+                raise socket.error(7, "Test error")
+            self.fail_("Exception not raised.")
+        except ErrorThriftMessage, exc:
+            self.assert_(transport.calls['close'] == ncloses + 1)
+            self.assert_(exc.args[1] == "Test error")
 
         closed = []
         try:
@@ -221,6 +251,19 @@ class TestClient(ConnectionTest):
         except Exception, exc:
             self.assert_(len(closed) == 1)
             self.assert_(exc.args[0] != "")
+
+        # Cassandra exceptions - no open/close, added info
+        excs = ((NotFoundException, UnavailableException,
+                 InvalidRequestException))
+        for exc_ in excs:
+            try:
+                with self.client.get_client() as clt:
+                    raise exc_("John Cleese")
+                self.fail_("Exception gobbled.")
+            except (exc_), ex:
+                self.assert_(len(ex.args) > 1)
+                server = self.client._servers[self.client._current_server]
+                self.assert_(repr(server) in ex.args[-1])
 
 
 class TestRetry(unittest.TestCase):

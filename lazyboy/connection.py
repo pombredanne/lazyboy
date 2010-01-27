@@ -229,12 +229,8 @@ class Client(object):
             if client:
                 client.transport.close()
 
-            if isinstance(ex.args, tuple):
-                args = (errno.errorcode[ex.args[0]], ex.args[1])
-            else:
-                args = ex.args
-
-            args += (self._servers[self._current_server],)
+            args = (errno.errorcode[ex.args[0]], ex.args[1],
+                    self._servers[self._current_server])
             raise exc.ErrorThriftMessage(*args)
         except Thrift.TException, ex:
             message = ex.message or "Transport error, reconnect"
@@ -244,8 +240,8 @@ class Client(object):
                                          self._servers[self._current_server])
         except (cas_types.NotFoundException, cas_types.UnavailableException,
                 cas_types.InvalidRequestException), ex:
-            ex.args += (self._servers[self._current_server],)
-            ex.why += " (on %s)" % self._servers[self._current_server]
+            ex.args += (self._servers[self._current_server],
+                        "on %s" % self._servers[self._current_server])
             raise ex
 
     @retry()
