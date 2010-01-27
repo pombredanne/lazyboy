@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 #
-# © 2009 Digg, Inc. All rights reserved.
+# © 2009, 2010 Digg, Inc. All rights reserved.
 # Author: Ian Eure <ian@digg.com>
 #
 """Record unit tests."""
 
+from __future__ import with_statement
 import time
 import math
 import uuid
@@ -19,6 +20,7 @@ import lazyboy.record
 from lazyboy.view import View
 from lazyboy.connection import Client
 from lazyboy.key import Key
+from lazyboy.util import save
 import lazyboy.exceptions as exc
 
 Record = lazyboy.record.Record
@@ -471,6 +473,14 @@ class RecordTest(CassandraBaseTest):
         self.assert_(tstamp_2 >= tstamp)
 
         self.assert_(abs(self.object.timestamp() - time.time()) <= 2)
+
+    def test_remove_key(self):
+        """Test remove_key."""
+        client = MockClient(['localhost:1234'])
+        key = Key("123", "456")
+        with save(lazyboy.record, ('get_pool',)):
+            lazyboy.record.get_pool = lambda keyspace: client
+            Record.remove_key(key)
 
 
 class MirroredRecordTest(unittest.TestCase):

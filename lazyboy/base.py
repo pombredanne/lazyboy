@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# © 2009 Digg, Inc. All rights reserved.
+# © 2009, 2010 Digg, Inc. All rights reserved.
 # Author: Ian Eure <ian@digg.com>
 #
 
@@ -16,9 +16,10 @@ class CassandraBase(object):
 
     """The base class for all Cassandra-accessing objects."""
 
+    consistency = ConsistencyLevel.ONE
+
     def __init__(self):
         self._clients = {}
-        self.consistency = ConsistencyLevel.ONE
 
     def _get_cas(self, keyspace=None):
         """Return the cassandra client."""
