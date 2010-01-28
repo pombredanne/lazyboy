@@ -482,6 +482,14 @@ class RecordTest(CassandraBaseTest):
             lazyboy.record.get_pool = lambda keyspace: client
             Record.remove_key(key)
 
+    def test_modified_reference(self):
+        """Make sure original column values don't change."""
+        rec = Record()._inject(Key('foo', 'bar', 'baz'),
+                               (Column("username", "whaddup"),))
+        orig = rec['username']
+        rec['username'] = "jcleese"
+        self.assert_(rec._original['username'].value == orig)
+
 
 class MirroredRecordTest(unittest.TestCase):
 

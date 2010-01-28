@@ -267,7 +267,7 @@ class Record(CassandraBase, dict):
         """Revert changes, restoring to the state we were in when loaded."""
         for col in self._original.values():
             dict.__setitem__(self, col.name, col.value)
-            self._columns[col.name] = col
+            self._columns[col.name] = copy.copy(col)
 
         self._modified, self._deleted = {}, {}
 
