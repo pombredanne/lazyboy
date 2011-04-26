@@ -197,9 +197,9 @@ class KeyRecordSetTest(unittest.TestCase):
             backing[record.key.key] = [ColumnOrSuperColumn(col)
                                        for col in record._columns.values()]
 
-        mock_client = MockClient([])
+        mock_client = MockClient("Eggs", [])
         mock_client.multiget_slice = \
-            lambda ks, keys, parent, pred, clvl: backing
+            lambda keys, parent, pred, clvl: backing
         sets.itr.get_pool = lambda ks: mock_client
 
         out_records = self.object._batch_load(Record, keys)
