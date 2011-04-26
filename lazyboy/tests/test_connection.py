@@ -49,7 +49,7 @@ class ConnectionTest(unittest.TestCase):
         self._client = conn.Client
         conn.Client = MockClient
         conn._CLIENTS = {}
-        conn._SERVERS = {self.pool: dict(servers=['localhost:1234'])}
+        conn._SERVERS = {self.pool: dict(keyspace='Keyspace1', servers=['localhost:1234'])}
 
     def tearDown(self):
         conn.Client = self._client
@@ -80,7 +80,7 @@ class TestClient(ConnectionTest):
 
     def setUp(self):
         super(TestClient, self).setUp()
-        self.client = MockClient(['localhost:1234', 'localhost:5678'])
+        self.client = MockClient('Keyspace1', ['localhost:1234', 'localhost:5678'])
 
     def test_init(self):
         pass
@@ -96,7 +96,7 @@ class TestClient(ConnectionTest):
 
         self.client._timeout = 250
         srv = self.client._build_server(cls, 'localhost', 1234)
-        self.assert_(srv._iprot.trans._TBufferedTransport__trans._timeout ==
+        self.assert_(srv._iprot.trans._TFramedTransport__trans._timeout ==
                      self.client._timeout * .001)
         self.assert_(isinstance(srv, Cassandra.Client))
 
@@ -191,7 +191,7 @@ class TestClient(ConnectionTest):
         def get_client():
             yield real_client
 
-        client = self._client(['127.0.0.1:9160'])
+        client = self._client('Keyspace1', ['127.0.0.1:9160'])
         client.get_client = get_client
         dummy = lambda *args, **kwargs: (True, args, kwargs)
 
