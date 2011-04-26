@@ -8,6 +8,8 @@
 
 import unittest
 import types
+import uuid
+import random
 import itertools as it
 
 from lazyboy.key import Key
@@ -234,6 +236,33 @@ class UtilTest(unittest.TestCase):
             for elt in chunk:
                 self.assert_(isinstance(elt, str))
 
+
+    def test_tuples(self):	       
+        """Test iterators.tuples."""	 	
+        cols = [Column(str(uuid.uuid4()), random.randint(0, 10000), ts) 	
+                for ts in range(100)]
+        tuples = iterators.tuples(cols)
+        self.assert_(isinstance(tuples, types.GeneratorType))
+        tuples = list(tuples)
+        self.assert_(len(tuples) == len(cols))
+        
+        for (idx, (name, value)) in enumerate(tuples): 	
+            self.assert_(cols[idx].name == name)
+            self.assert_(cols[idx].value == value)	 	
+
+    def test_columns(self):
+        """Test iterators.tuples.""" 	
+        tuples = [(str(uuid.uuid4()), random.randint(0, 10000))
+                  for x in range(100)]
+
+        cols = iterators.columns(tuples, 0)	 	
+        self.assert_(isinstance(cols, types.GeneratorType))
+        cols = list(cols)
+        self.assert_(len(tuples) == len(cols))	 	
+        for (idx, col) in enumerate(cols):
+            self.assert_(tuples[idx][0] == col.name)
+            self.assert_(tuples[idx][1] == col.value)
+            self.assert_(col.timestamp == 0)
 
 if __name__ == '__main__':
     unittest.main()
