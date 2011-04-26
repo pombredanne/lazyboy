@@ -60,7 +60,7 @@ class View(CassandraBase):
     def __len__(self):
         """Return the number of records in this view."""
         return self._get_cas().get_count(
-            self.key.keyspace, self.key.key, self.key, self.consistency)
+            self.key.key, self.key, self.consistency)
 
     def _cols(self, start_col=None, end_col=None):
         """Yield columns in the view."""
@@ -78,7 +78,7 @@ class View(CassandraBase):
             fudge = 1 if self.exclusive else int(passes > 0)
 
             cols = client.get_slice(
-                self.key.keyspace, self.key.key, self.key,
+                self.key.key, self.key,
                 SlicePredicate(slice_range=SliceRange(
                         last_col, end_col, self.reversed, chunk_size + fudge)),
                 self.consistency)
@@ -120,7 +120,7 @@ class View(CassandraBase):
             "Can't append non-record type %s to view %s" % \
             (record.__class__, self.__class__)
         self._get_cas().insert(
-            self.key.keyspace, self.key.key,
+            self.key.key,
             self.key.get_path(column=self._record_key(record)),
             record.key.key, record.timestamp(), self.consistency)
 
@@ -130,7 +130,7 @@ class View(CassandraBase):
             "Can't remove non-record type %s to view %s" % \
             (record.__class__, self.__class__)
         self._get_cas().remove(
-            self.key.keyspace, self.key.key,
+            self.key.key,
             self.key.get_path(column=self._record_key(record)),
             record.timestamp(), self.consistency)
 

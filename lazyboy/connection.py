@@ -56,10 +56,10 @@ def retry(callback=None):
     return __closure__
 
 
-def add_pool(name, servers, timeout=None, recycle=None, **kwargs):
+def add_pool(keyspace, servers, timeout=None, recycle=None, **kwargs):
     """Add a connection."""
-    _SERVERS[name] = dict(servers=servers, timeout=timeout, recycle=recycle,
-                          **kwargs)
+    _SERVERS[keyspace] = dict(keyspace=keyspace, servers=servers, timeout=timeout, recycle=recycle,
+                              **kwargs)
 
 
 def get_pool(name):
@@ -71,7 +71,7 @@ def get_pool(name):
     try:
         _CLIENTS[key] = Client(**_SERVERS[name])
         return _CLIENTS[key]
-    except Exception:
+    except KeyError:
         raise exc.ErrorCassandraClientNotFound(
             "Pool `%s' is not defined." % name)
 
@@ -151,27 +151,28 @@ class Client(object):
 
     """A wrapper around the Cassandra client which load-balances."""
 
-    def __init__(self, servers, timeout=None, recycle=None, debug=False,
+    def __init__(self, keyspace, servers, timeout=None, recycle=None, debug=False,
                  **conn_args):
         """Initialize the client."""
         self._servers = servers
         self._recycle = recycle
         self._timeout = timeout
-
+        self.keyspace = keyspace
+        
         class_ = DebugTraceClient if debug else Cassandra.Client
         self._clients = [s for s in
                          [self._build_server(class_, *server.split(":"),
                                              **conn_args)
                           for server in servers] if s]
         self._current_server = random.randint(0, len(self._clients))
-
+        
     def _build_server(self, class_, host, port, **conn_args):
         """Return a client for the given host and port."""
         try:
             socket_ = TSocket.TSocket(host, int(port))
             if self._timeout:
                 socket_.setTimeout(self._timeout)
-            transport = TTransport.TBufferedTransport(socket_)
+            transport = TTransport.TFramedTransport(socket_)
             protocol = TBinaryProtocol.TBinaryProtocolAccelerated(transport)
             client = class_(protocol, **conn_args)
             client.transport = transport
@@ -211,11 +212,13 @@ class Client(object):
         try:
             client.transport.open()
             client.connect_time = time.time()
+            client.set_keyspace(self.keyspace)
         except thrift.transport.TTransport.TTransportException, ex:
             client.transport.close()
             raise exc.ErrorThriftMessage(
                 ex.message, self._servers[self._current_server])
 
+        
         return client
 
     @contextmanager
@@ -245,10 +248,28 @@ class Client(object):
             raise ex
 
     @retry()
-    def get(self, *args, **kwargs):
+    def set_keyspace(self, *args, **kwargs):
         """
         Parameters:
         - keyspace
+        """
+        with self.get_client() as client:
+            return client.set_keyspace(*args, **kwargs)
+        
+    @retry()
+    def login(self, *args, **kwargs):
+        """
+        Parameters:
+        - keyspace
+        - auth_request
+        """
+        with self.get_client() as client:
+            return client.login(*args, **kwargs)
+        
+    @retry()
+    def get(self, *args, **kwargs):
+        """
+        Parameters:
         - key
         - column_path
         - consistency_level
@@ -260,7 +281,6 @@ class Client(object):
     def get_slice(self, *args, **kwargs):
         """
         Parameters:
-        - keyspace
         - key
         - column_parent
         - predicate
@@ -275,7 +295,6 @@ class Client(object):
         returns a subset of columns for a range of keys.
 
         Parameters:
-        - keyspace
         - column_parent
         - predicate
         - start_key
@@ -289,8 +308,7 @@ class Client(object):
     @retry()
     def multiget(self, *args, **kwargs):
         """
-        Parameters:
-        - keyspace
+        Parameters:        
         - keys
         - column_path
         - consistency_level
@@ -302,7 +320,6 @@ class Client(object):
     def multiget_slice(self, *args, **kwargs):
         """
         Parameters:
-        - keyspace
         - keys
         - column_parent
         - predicate
@@ -314,8 +331,7 @@ class Client(object):
     @retry()
     def get_count(self, *args, **kwargs):
         """
-        Parameters:
-        - keyspace
+        Parameters:        
         - key
         - column_parent
         - consistency_level
@@ -326,8 +342,7 @@ class Client(object):
     @retry()
     def get_key_range(self, *args, **kwargs):
         """
-        Parameters:
-        - keyspace
+        Parameters:        
         - column_family
         - start
         - finish
@@ -340,8 +355,7 @@ class Client(object):
     @retry()
     def remove(self, *args, **kwargs):
         """
-        Parameters:
-        - keyspace
+        Parameters:        
         - key
         - column_path
         - timestamp
@@ -381,7 +395,7 @@ class Client(object):
     def batch_insert(self, *args, **kwargs):
         """
         Parameters:
-        - keyspace
+        
         - key
         - cfmap
         - consistency_level
@@ -393,7 +407,7 @@ class Client(object):
     def batch_mutate(self, *args, **kwargs):
         """
         Parameters:
-        - keyspace
+        
         - mutation_map
         - consistency_level
         """
@@ -404,7 +418,7 @@ class Client(object):
     def insert(self, *args, **kwargs):
         """
         Parameters:
-        - keyspace
+        
         - key
         - column_path
         - value

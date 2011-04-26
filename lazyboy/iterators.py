@@ -44,7 +44,7 @@ def slice_iterator(key, consistency, **predicate_args):
 
     client = get_pool(key.keyspace)
     res = client.get_slice(
-        key.keyspace, key.key, key, predicate, consistency)
+        key.key, key, predicate, consistency)
 
     if not res:
         raise exc.ErrorNoSuchRecord("No record matching key %s" % key)
@@ -78,7 +78,7 @@ def multigetterator(keys, consistency, **range_args):
 
             for (supercol, sc_keys) in groupsort(cf_keys, GET_SUPERCOL):
                 records = client.multiget_slice(
-                    keyspace, map(GET_KEY, sc_keys),
+                    map(GET_KEY, sc_keys),
                     ColumnParent(colfam, supercol), predicate, consistency)
 
                 for (row_key, cols) in records.iteritems():
@@ -96,7 +96,7 @@ def sparse_get(key, columns):
 
     client = get_pool(key.keyspace)
     res = client.get_slice(
-        key.keyspace, key.key, key, SlicePredicate(column_names=columns),
+        key.key, key, SlicePredicate(column_names=columns),
         ConsistencyLevel.ONE)
 
     return unpack(res)
@@ -109,7 +109,7 @@ def sparse_multiget(keys, columns):
     client = get_pool(first_key.keyspace)
     row_keys = [key.key for key in keys]
     res = client.multiget_slice(
-        first_key.keyspace, row_keys, first_key,
+        row_keys, first_key,
         SlicePredicate(column_names=columns), ConsistencyLevel.ONE)
 
     out = {}
@@ -121,8 +121,8 @@ def sparse_multiget(keys, columns):
 def key_range(key, start="", finish="", count=100):
     """Return an iterator over a range of keys."""
     cas = get_pool(key.keyspace)
-    return cas.get_key_range(key.keyspace, key.column_family, start,
-                                  finish, count, ConsistencyLevel.ONE)
+    return cas.get_key_range(key.column_family, start,
+                             finish, count, ConsistencyLevel.ONE)
 
 
 def key_range_iterator(key, start="", finish="", count=100):

@@ -17,7 +17,7 @@ def get_column(key, column_name, consistency=None):
     consistency = consistency or cas_types.ConsistencyLevel.ONE
     return unpack(
         [get_pool(key.keyspace).get(
-            key.keyspace, key.key,
+            key.key,
             key.get_path(column=column_name), consistency)]).next()
 
 
@@ -37,13 +37,13 @@ def set(key, name, value, timestamp=None, consistency=None):
     """Set a column's value."""
     consistency = consistency or cas_types.ConsistencyLevel.ONE
     get_pool(key.keyspace).insert(
-        key.keyspace, key.key, key.get_path(column=name), value, timestamp,
+        key.key, key.get_path(column=name), value, timestamp,
         consistency)
 
 
 def remove(key, column, timestamp=None, consistency=None):
     """Remove a column."""
     consistency = consistency or cas_types.ConsistencyLevel.ONE
-    get_pool(key.keyspace).remove(key.keyspace, key.key,
+    get_pool(key.keyspace).remove(key.key,
                                   key.get_path(column=column), timestamp,
                                   consistency)

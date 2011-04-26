@@ -226,7 +226,7 @@ class Record(CassandraBase, dict):
         client = self._get_cas(key.keyspace)
         # Delete items
         for path in changes['deleted']:
-            client.remove(key.keyspace, key.key, path,
+            client.remove(key.key, path,
                           self.timestamp(), consistency)
         self._deleted.clear()
 
@@ -242,7 +242,7 @@ class Record(CassandraBase, dict):
         if key.is_super():
             columns = [SuperColumn(name=key.super_column, columns=columns)]
 
-        return (key.keyspace, key.key,
+        return (key.key,
                 {key.column_family: tuple(iterators.pack(columns))},
                 consistency)
 
@@ -250,14 +250,14 @@ class Record(CassandraBase, dict):
     def remove_key(cls, key, consistency=None):
         """Remove a row based on a key."""
         consistency = consistency or cls.consistency
-        get_pool(key.keyspace).remove(key.keyspace, key.key,
+        get_pool(key.keyspace).remove(key.key,
                                       key.get_path(), cls.timestamp(),
                                consistency)
 
     def remove(self, consistency=None):
         """Remove this record from Cassandra."""
         consistency = consistency or self.consistency
-        self._get_cas().remove(self.key.keyspace, self.key.key,
+        self._get_cas().remove(self.key.key,
                                self.key.get_path(), self.timestamp(),
                                consistency)
         self._clean()
