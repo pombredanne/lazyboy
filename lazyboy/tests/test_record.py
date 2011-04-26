@@ -48,11 +48,11 @@ class MockClient(Client):
         _last_cols.extend(cols)
         return cols
 
-    def batch_insert(self, keyspace, key, cfmap, consistency_level):
+    def batch_insert(self, key, cfmap, consistency_level):
         _inserts.append(cfmap)
         return True
 
-    def remove(self, keyspace, key, column_path, timestamp, consistency_level):
+    def remove(self, key, column_path, timestamp, consistency_level):
         return
 
 
@@ -204,7 +204,7 @@ class RecordTest(CassandraBaseTest):
         """Return a mock cassandra instance"""
         mock = None
         if not mock:
-            mock = MockClient(['localhost:1234'])
+            mock = MockClient('eggs', ['localhost:1234'])
         return mock
 
     def test_load(self):
@@ -247,31 +247,29 @@ class RecordTest(CassandraBaseTest):
         args = self.object._get_batch_args(key, columns)
 
         # Make sure the key is correct
-        self.assert_(args[0] is key.keyspace)
-        self.assert_(args[1] is key.key)
-        self.assert_(isinstance(args[2], dict))
-        keys = args[2].keys()
+        self.assert_(args[0] is key.key)
+        self.assert_(isinstance(args[1], dict))
+        keys = args[1].keys()
         self.assert_(len(keys) == 1)
         self.assert_(keys[0] == key.column_family)
-        self.assert_(not isinstance(args[2][key.column_family],
+        self.assert_(not isinstance(args[1][key.column_family],
                                     types.GeneratorType))
-        for val in args[2][key.column_family]:
+        for val in args[1][key.column_family]:
             self.assert_(isinstance(val, ColumnOrSuperColumn))
             self.assert_(val.column in columns)
             self.assert_(val.super_column is None)
 
         key.super_column = "spam"
         args = self.object._get_batch_args(key, columns)
-        self.assert_(args[0] is key.keyspace)
-        self.assert_(args[1] is key.key)
-        self.assert_(isinstance(args[2], dict))
+        self.assert_(args[0] is key.key)
+        self.assert_(isinstance(args[1], dict))
 
-        keys = args[2].keys()
+        keys = args[1].keys()
         self.assert_(len(keys) == 1)
         self.assert_(keys[0] == key.column_family)
-        self.assert_(not isinstance(args[2][key.column_family],
+        self.assert_(not isinstance(args[1][key.column_family],
                                     types.GeneratorType))
-        for val in args[2][key.column_family]:
+        for val in args[1][key.column_family]:
             self.assert_(isinstance(val, ColumnOrSuperColumn))
             self.assert_(val.column is None)
             self.assert_(isinstance(val.super_column, SuperColumn))
@@ -476,7 +474,7 @@ class RecordTest(CassandraBaseTest):
 
     def test_remove_key(self):
         """Test remove_key."""
-        client = MockClient(['localhost:1234'])
+        client = MockClient('eggs', ['localhost:1234'])
         key = Key("123", "456")
         with save(lazyboy.record, ('get_pool',)):
             lazyboy.record.get_pool = lambda keyspace: client
