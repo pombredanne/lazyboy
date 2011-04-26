@@ -119,10 +119,14 @@ class View(CassandraBase):
         assert isinstance(record, Record), \
             "Can't append non-record type %s to view %s" % \
             (record.__class__, self.__class__)
+
+        col_name = self._record_key(record)
+        col = Column(col_name, record.key.key, record.timestamp())
+            
         self._get_cas().insert(
             self.key.key,
             self.key.get_path(column=self._record_key(record)),
-            record.key.key, record.timestamp(), self.consistency)
+            col, self.consistency)
 
     def remove(self, record):
         """Remove a record from a view"""
