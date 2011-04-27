@@ -426,3 +426,193 @@ class Client(object):
         """
         with self.get_client() as client:
             return client.insert(*args, **kwargs)
+
+    @retry()
+    def describe_cluster_name(self, *args, **kwargs):
+        """
+        Parameters:
+
+        none
+        """
+        with self.get_client() as client:
+            return client.describe_cluster_name(*args, **kwargs)
+                    
+    @retry()
+    def describe_keyspaces(self, *args, **kwargs):
+        """
+        Parameters:
+
+        none
+        """
+        with self.get_client() as client:
+            return client.describe_keyspaces(*args, **kwargs)
+                    
+    @retry()
+    def describe_partitioner(self, *args, **kwargs):
+        """
+        Parameters:
+
+        none
+        """
+        with self.get_client() as client:
+            return client.describe_partitioner(*args, **kwargs)
+                    
+    @retry()
+    def describe_ring(self, *args, **kwargs):
+        """
+        Parameters:
+
+        none
+        """
+        with self.get_client() as client:
+            return client.describe_ring(*args, **kwargs)
+                    
+    @retry()
+    def describe_version(self, *args, **kwargs):
+        """
+        Parameters:
+
+        none
+        """
+        with self.get_client() as client:
+            return client.describe_version(*args, **kwargs)
+                    
+    @retry()
+    def describe_schema_versions(self, *args, **kwargs):
+        """
+        Parameters:
+
+        none
+        """
+        with self.get_client() as client:
+            return client.describe_schema_versions(*args, **kwargs)
+                    
+    @retry()
+    def describe_snitch(self, *args, **kwargs):
+        """
+        Parameters:
+
+        none
+        """
+        with self.get_client() as client:
+            return client.describe_snitch(*args, **kwargs)
+                    
+    @retry()
+    def describe_splits(self, *args, **kwargs):
+        """
+        Parameters:
+
+        none
+        """
+        with self.get_client() as client:
+            return client.describe_splits(*args, **kwargs)
+                    
+    @retry()
+    def get_indexed_slices(self, *args, **kwargs):
+        """
+        Parameters:
+
+        column_parent
+        index_clause
+        predicate
+        consistency_level
+        """
+        with self.get_client() as client:
+            return client.get_indexed_slices(*args, **kwargs)
+                    
+    @retry()
+    def get_range_slices(self, *args, **kwargs):
+        """
+        Parameters:
+
+        column_parent
+        predicate
+        range
+        consistency_level
+        """
+        with self.get_client() as client:
+            return client.get_range_slices(*args, **kwargs)
+                    
+    @retry()
+    def multiget_count(self, *args, **kwargs):
+        """
+        Parameters:
+
+        keys
+        column_parent
+        predicate
+        consistency_level
+        """
+        with self.get_client() as client:
+            return client.multiget_count(*args, **kwargs)
+
+    @retry()
+    def system_add_column_family(self, *args, **kwargs):
+        """
+        Parameters:
+
+        CFDef cf_def
+        """
+        with self.get_client() as client:
+            return client.system_add_column_family(*args, **kwargs)
+
+    @retry()
+    def system_drop_column_family(self, *args, **kwargs):
+        """
+        Parameters:
+
+        ColumnFamily column_family
+        """
+        with self.get_client() as client:
+            return client.system_drop_column_family(*args, **kwargs)
+
+    @retry()
+    def system_update_column_family(self, *args, **kwargs):
+        """
+        Parameters:
+
+        TODO: no docs yet
+        """
+        with self.get_client() as client:
+            return client.system_update_column_family(*args, **kwargs)
+
+    @retry()
+    def system_add_keyspace(self, *args, **kwargs):
+        """
+        Parameters:
+
+        KSDef ks_def
+        """
+        with self.get_client() as client:
+            return client.system_add_keyspace(*args, **kwargs)
+
+    @retry()
+    def system_drop_keyspace(self, *args, **kwargs):
+        """
+        Parameters:
+
+        string keyspace
+        """
+        with self.get_client() as client:
+            return client.system_drop_keyspace(*args, **kwargs)
+
+    @retry()
+    def system_update_keyspace(self, *args, **kwargs):
+        """
+        Parameters:
+
+        TODO: no docs yet
+        """
+        with self.get_client() as client:
+            return client.system_update_keyspace(*args, **kwargs)
+
+    @retry()
+    def truncate(self, *args, **kwargs):
+        """
+        Parameters:
+
+        string column_family
+        """
+        with self.get_client() as client:
+            return client.truncate(*args, **kwargs)
+
