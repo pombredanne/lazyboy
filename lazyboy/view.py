@@ -10,7 +10,7 @@ import uuid
 import traceback
 from itertools import islice
 
-from cassandra.ttypes import SlicePredicate, SliceRange, Column
+from cassandra.ttypes import SlicePredicate, SliceRange, Column, ColumnPath
 
 from lazyboy.key import Key
 from lazyboy.base import CassandraBase
@@ -120,7 +120,7 @@ class View(CassandraBase):
             "Can't append non-record type %s to view %s" % \
             (record.__class__, self.__class__)
 
-        path = self.key.get_path(column=self._record_key(record)),
+        path = self.key.get_path(column=self._record_key(record))
         col = Column(path.column, record.key.key, record.timestamp())
         
         self._get_cas().insert(
