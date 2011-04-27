@@ -9,7 +9,7 @@ import time
 import copy
 from itertools import ifilterfalse as filternot
 
-from cassandra.ttypes import Column, SuperColumn
+from cassandra.ttypes import Column, SuperColumn, Mutation, ColumnOrSuperColumn
 
 from lazyboy.connection import get_pool
 from lazyboy.base import CassandraBase
@@ -232,19 +232,28 @@ class Record(CassandraBase, dict):
 
         # Update items
         if changes['changed']:
-            client.batch_insert(*self._get_batch_args(
+            client.batch_mutate(*self._get_batch_args(
                     key, changes['changed'], consistency))
 
     def _get_batch_args(self, key, columns, consistency=None):
         """Return a BatchMutation for the given key and columns."""
         consistency = consistency or self.consistency
 
+        mutations = []
+        
         if key.is_super():
             columns = [SuperColumn(name=key.super_column, columns=columns)]
+            col_type = "super_column"
+        else:
+            col_type = "column"
+            
+        mutations = [Mutation(column_or_supercolumn=ColumnOrSuperColumn(**{col_type:col}))
+                     for col in columns]
 
-        return (key.key,
-                {key.column_family: tuple(iterators.pack(columns))},
-                consistency)
+        mutation_map = {key.key:
+                        {key.column_family: mutations}}
+
+        return (mutation_map, consistency)
 
     @classmethod
     def remove_key(cls, key, consistency=None):
