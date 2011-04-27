@@ -551,7 +551,7 @@ class Client(object):
         """
         Parameters:
 
-        CFDef cf_def
+        cf_def
         """
         with self.get_client() as client:
             return client.system_add_column_family(*args, **kwargs)
@@ -561,7 +561,7 @@ class Client(object):
         """
         Parameters:
 
-        ColumnFamily column_family
+        column_family
         """
         with self.get_client() as client:
             return client.system_drop_column_family(*args, **kwargs)
@@ -571,7 +571,7 @@ class Client(object):
         """
         Parameters:
 
-        TODO: no docs yet
+        cf_def
         """
         with self.get_client() as client:
             return client.system_update_column_family(*args, **kwargs)
@@ -581,7 +581,7 @@ class Client(object):
         """
         Parameters:
 
-        KSDef ks_def
+        ks_def
         """
         with self.get_client() as client:
             return client.system_add_keyspace(*args, **kwargs)
@@ -601,7 +601,7 @@ class Client(object):
         """
         Parameters:
 
-        TODO: no docs yet
+        ks_def
         """
         with self.get_client() as client:
             return client.system_update_keyspace(*args, **kwargs)
